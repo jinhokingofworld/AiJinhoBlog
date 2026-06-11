@@ -13,17 +13,17 @@
 
 ## 2. 최종 선택 요약
 
-| 영역 | MVP 기본 선택 | 운영 전환 후보 | 결정 |
-|---|---|---|---|
-| Frontend | Next.js, React, TypeScript | 유지 | 확정 |
-| Styling | Tailwind CSS | 유지 | 확정 |
-| Database | MySQL | MySQL HeatWave | MySQL 유지 |
-| ORM | Prisma | Drizzle, 직접 SQL | Prisma 기본 |
-| Vector DB | ChromaDB | MySQL HeatWave Vector Store | ChromaDB 기본 |
-| Embedding | OpenAI Embedding API | MySQL HeatWave GenAI Embedding | OpenAI 기본 |
-| RAG | 자체 경량 파이프라인 | LangChain, LlamaIndex | 자체 구현 우선 |
-| MCP | TypeScript MCP SDK | 추후 대체 가능 | 공식 SDK 우선 |
-| Agent | 자체 서비스 레이어 | LangGraph 등 | 자체 구현 우선 |
+| 영역      | MVP 기본 선택              | 운영 전환 후보                 | 결정           |
+| --------- | -------------------------- | ------------------------------ | -------------- |
+| Frontend  | Next.js, React, TypeScript | 유지                           | 확정           |
+| Styling   | Tailwind CSS               | 유지                           | 확정           |
+| Database  | MySQL                      | MySQL HeatWave                 | MySQL 유지     |
+| ORM       | Prisma                     | Drizzle, 직접 SQL              | Prisma 기본    |
+| Vector DB | ChromaDB                   | MySQL HeatWave Vector Store    | ChromaDB 기본  |
+| Embedding | OpenAI Embedding API       | MySQL HeatWave GenAI Embedding | OpenAI 기본    |
+| RAG       | 자체 경량 파이프라인       | LangChain, LlamaIndex          | 자체 구현 우선 |
+| MCP       | TypeScript MCP SDK         | 추후 대체 가능                 | 공식 SDK 우선  |
+| Agent     | 자체 서비스 레이어         | LangGraph 등                   | 자체 구현 우선 |
 
 ## 3. Next.js 프로젝트 구조
 
