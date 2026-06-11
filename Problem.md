@@ -113,3 +113,73 @@ Next.js 16 Turbopack build 과정에서 CSS 처리와 worker 실행 중 내부 �
 ### 해결 방법
 
 동일한 `npm run build`를 포트 바인딩이 허용된 컨텍스트에서 다시 실행했고, 빌드가 정상 완료되었다. 코드 변경이 필요한 문제는 아니며, 로컬 터미널 또는 CI 환경에서는 정상 동작할 수 있다.
+
+## 9. Prisma 7 설정 파일의 DATABASE_URL 조회 실패
+
+### 문제 정의
+
+`npm run prisma:validate` 실행 시 `PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL` 오류가 발생했다.
+
+### 발생 원인
+
+Prisma 7의 `prisma.config.ts`에서 `env("DATABASE_URL")`를 직접 호출하면 설정 파일 로드 시점에 환경변수가 반드시 존재해야 한다. 현재 검증 명령은 `.env`를 먼저 로드하지 않은 상태로 실행되어 `DATABASE_URL`을 찾지 못했다.
+
+### 해결 방법
+
+`prisma.config.ts`에서 `process.env.DATABASE_URL`을 우선 사용하고, 값이 없으면 Docker Compose 기본 MySQL URL을 사용하도록 변경했다. 실제 배포나 로컬 운영에서는 `DATABASE_URL` 환경변수를 지정하면 그 값이 우선 적용된다.
+
+## 10. Vitest의 TypeScript 경로 별칭 미인식
+
+### 문제 정의
+
+`npm run test` 실행 시 `Cannot find package '@/lib/auth-crypto'` 오류로 테스트 파일을 로드하지 못했다.
+
+### 발생 원인
+
+Next.js와 TypeScript는 `tsconfig.json`의 `@/*` 경로 별칭을 사용하지만, Vitest는 별도 설정이 없으면 이 별칭을 자동으로 해석하지 못한다.
+
+### 해결 방법
+
+`vitest.config.ts`에 `resolve.alias`를 추가하여 `@`가 앱 루트 디렉터리를 가리키도록 설정했다.
+
+## 11. Prisma 7 Client 생성자 옵션 누락
+
+### 문제 정의
+
+샌드박스 밖에서 `npm run build`를 실행했을 때 `PrismaClient needs to be constructed with a non-empty, valid PrismaClientOptions` 오류가 발생했다.
+
+### 발생 원인
+
+Prisma 7의 기본 client engine은 `new PrismaClient()`만으로는 실행되지 않고, DB 드라이버 어댑터나 Accelerate URL이 필요하다. MySQL provider를 사용하는 현재 프로젝트는 MySQL 호환 드라이버 어댑터를 명시해야 한다.
+
+### 해결 방법
+
+공식 MySQL/MariaDB 호환 어댑터인 `@prisma/adapter-mariadb`를 설치하고, `lib/prisma.ts`에서 `new PrismaClient({ adapter: new PrismaMariaDb(databaseUrl) })` 형태로 Prisma Client를 생성하도록 변경했다.
+
+## 12. 로컬 Docker 데몬 미실행
+
+### 문제 정의
+
+Phase 1 구현 후 MySQL/ChromaDB 컨테이너 상태 확인을 위해 `docker compose ps`를 실행했지만 Docker API 소켓에 연결하지 못했다.
+
+### 발생 원인
+
+현재 로컬 환경에서 Docker Desktop 또는 Docker 데몬이 실행 중이 아니어서 `/Users/j/.docker/run/docker.sock` 소켓이 존재하지 않았다.
+
+### 해결 방법
+
+코드 레벨 검증은 `prisma validate`, `prisma generate`, `lint`, `format:check`, `test`, `build`로 완료했다. 실제 회원가입/게시글 작성 같은 DB 연동 E2E 확인은 Docker 데몬을 실행한 뒤 `npm run services:up`과 Prisma 마이그레이션 적용 후 진행해야 한다.
+
+## 13. Prisma 7 migrate diff 옵션 변경
+
+### 문제 정의
+
+초기 migration SQL 생성을 위해 `prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script`를 실행했지만 옵션 제거 오류가 발생했다.
+
+### 발생 원인
+
+Prisma 7에서 `--to-schema-datamodel` 옵션이 제거되었고, 같은 용도에는 `--to-schema` 옵션을 사용해야 한다.
+
+### 해결 방법
+
+`prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script`로 명령을 변경해 초기 MySQL migration SQL을 생성했다.

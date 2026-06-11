@@ -30,11 +30,20 @@ jobs:
       - name: Install app dependencies
         run: npm --prefix aijinhoblog ci
 
+      - name: Validate Prisma schema
+        run: npm run prisma:validate
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
       - name: Lint
         run: npm run lint
 
       - name: Check formatting
         run: npm run format:check
+
+      - name: Test
+        run: npm run test
 
       - name: Build
         run: npm run build

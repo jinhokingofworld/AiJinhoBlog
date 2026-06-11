@@ -7,6 +7,7 @@ aijinhoblog/out/
 build/
 dist/
 coverage/
+aijinhoblog/lib/generated/prisma/
 package-lock.json
 aijinhoblog/package-lock.json
 .git/
