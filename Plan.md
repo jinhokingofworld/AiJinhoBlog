@@ -41,6 +41,7 @@
    - Detailed Issue: 핵심 사용자 흐름 정리
    - Detailed Issue: MVP와 Future Scope 경계 확정
    - Detailed Issue: 기능별 완료 조건 작성
+   - 산출물: `docs/phase-0/mvp-requirements.md`
 
 2. Medium Issue: 기술 선택 확정
    - Detailed Issue: Next.js 프로젝트 구조 결정
