@@ -13,6 +13,7 @@
 ```bash
 nvm use
 npm run install:all
+npm run services:up
 npm run dev
 ```
 
@@ -37,6 +38,14 @@ npm run dev
 ```bash
 npm run dev
 npm run lint
+npm run format:check
 npm run build
 npm run start
+```
+
+로컬 MySQL과 ChromaDB는 Docker Compose로 실행합니다.
+
+```bash
+npm run services:up
+npm run services:down
 ```

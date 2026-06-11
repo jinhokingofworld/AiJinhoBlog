@@ -57,6 +57,7 @@
    - Detailed Issue: `.env.example` 작성
    - Detailed Issue: MySQL, ChromaDB 로컬 실행 방식 구성
    - Detailed Issue: 기본 CI 파이프라인 구성
+   - 산출물: `docs/phase-0/development-environment.md`
 
 완료 기준:
 
