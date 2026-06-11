@@ -49,6 +49,7 @@
    - Detailed Issue: RAG Framework 후보 비교
    - Detailed Issue: MCP Framework 후보 비교
    - Detailed Issue: Agent Framework 후보 비교
+   - 산출물: `docs/phase-0/technical-decisions.md`
 
 3. Medium Issue: 개발 환경 구성
    - Detailed Issue: Next.js, React, TypeScript 프로젝트 생성
