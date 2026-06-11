@@ -60,12 +60,12 @@ AI는 작성자의 과거 게시글을 지식 기반(Knowledge Base)으로 삼�
 |---|---|---|
 |**Frontend**|React||
 |**Fullstack Framework**|Next.js||
-|**Database**|MySQL||
+|**Database**|MySQL + Prisma||
 |**LLM**|OpenAI||
-|**Vector DB**|ChromaDB||
-|**RAG Framework**|_(추후 결정)_||
-|**MCP Framework**|_(추후 결정)_||
-|**Agent Framework**|_(추후 결정)_||
+|**Vector DB**|ChromaDB|MVP 기본값. MySQL HeatWave Vector Store는 운영 전환 후보|
+|**RAG Framework**|자체 경량 파이프라인|필요 시 LangChain 또는 LlamaIndex 검토|
+|**MCP Framework**|TypeScript MCP SDK||
+|**Agent Framework**|자체 서비스 레이어|필요 시 Agent framework 검토|
 
 ## 4. 프로젝트 관리 및 개발 프로세스
 
