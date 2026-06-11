@@ -1,0 +1,120 @@
+import { getCurrentUser } from "@/lib/auth";
+import { fail, json, readJson } from "@/lib/http";
+import { postDetailInclude, serializePost, toPostTagCreate } from "@/lib/posts";
+import { prisma } from "@/lib/prisma";
+import { parsePostPayload } from "@/lib/validation";
+
+export const runtime = "nodejs";
+
+type Params = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export async function GET(_request: Request, { params }: Params) {
+  const { id } = await params;
+  const post = await prisma.post.findUnique({
+    where: {
+      id,
+    },
+    include: postDetailInclude,
+  });
+
+  if (!post) {
+    return fail("게시글을 찾을 수 없습니다.", 404);
+  }
+
+  return json({ post: serializePost(post) });
+}
+
+export async function PATCH(request: Request, { params }: Params) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return fail("로그인이 필요합니다.", 401);
+  }
+
+  const { id } = await params;
+  const payload = await readJson(request);
+  const parsed = parsePostPayload(payload);
+
+  if (!parsed.ok) {
+    return fail(parsed.error, 400);
+  }
+
+  const post = await prisma.post.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      authorId: true,
+    },
+  });
+
+  if (!post) {
+    return fail("게시글을 찾을 수 없습니다.", 404);
+  }
+
+  if (post.authorId !== user.id) {
+    return fail("게시글 작성자만 수정할 수 있습니다.", 403);
+  }
+
+  const [, updatedPost] = await prisma.$transaction([
+    prisma.postTag.deleteMany({
+      where: {
+        postId: id,
+      },
+    }),
+    prisma.post.update({
+      where: {
+        id,
+      },
+      data: {
+        title: parsed.value.title,
+        excerpt: parsed.value.excerpt,
+        content: parsed.value.content,
+        tags: {
+          create: toPostTagCreate(parsed.value.tagNames),
+        },
+      },
+      include: postDetailInclude,
+    }),
+  ]);
+
+  return json({ post: serializePost(updatedPost) });
+}
+
+export async function DELETE(_request: Request, { params }: Params) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return fail("로그인이 필요합니다.", 401);
+  }
+
+  const { id } = await params;
+  const post = await prisma.post.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      authorId: true,
+    },
+  });
+
+  if (!post) {
+    return fail("게시글을 찾을 수 없습니다.", 404);
+  }
+
+  if (post.authorId !== user.id) {
+    return fail("게시글 작성자만 삭제할 수 있습니다.", 403);
+  }
+
+  await prisma.post.delete({
+    where: {
+      id,
+    },
+  });
+
+  return json({ ok: true });
+}
