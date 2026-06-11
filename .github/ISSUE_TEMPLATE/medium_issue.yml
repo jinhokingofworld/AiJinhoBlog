@@ -1,0 +1,111 @@
+name: Medium Issue
+description: 브랜치 생성 기준이 되는 독립적인 작업 단위를 정의합니다.
+title: "[Medium] "
+labels:
+  - medium-issue
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Medium Issue는 Git 브랜치 생성 기준입니다.
+        이슈 하나가 독립적으로 개발, 리뷰, 병합될 수 있는 크기여야 합니다.
+
+  - type: input
+    id: parent_main_issue
+    attributes:
+      label: 상위 Main Issue
+      description: 연결되는 Main Issue 번호 또는 링크를 작성하세요.
+      placeholder: 예) #12
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      description: 이 이슈가 속한 프로젝트 단계를 선택하세요.
+      options:
+        - Phase 0. 프로젝트 기준 정리
+        - Phase 1. 기본 블로그 기반 구현
+        - Phase 2. AI 데이터 파이프라인 구축
+        - Phase 3. RAG 기능 구현
+        - Phase 4. MCP 연동
+        - Phase 5. AI Agent 기능 구현
+        - Phase 6. 품질 안정화 및 배포 준비
+        - Future Scope
+    validations:
+      required: true
+
+  - type: input
+    id: branch_name
+    attributes:
+      label: 브랜치 이름
+      description: 이 Medium Issue를 기준으로 생성할 브랜치 이름을 작성하세요.
+      placeholder: 예) feature/auth-flow
+    validations:
+      required: true
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: 목표
+      description: 이 브랜치에서 달성할 기능 또는 변경 사항을 작성하세요.
+      placeholder: 예) 회원가입, 로그인, 로그아웃 API와 인증 상태 유지 흐름을 구현한다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: detailed_issues
+    attributes:
+      label: 하위 Detailed Issue 목록
+      description: 2~3개의 체크리스트로 완료할 수 있는 작은 작업 단위로 나누세요.
+      value: |
+        - [ ] Detailed Issue:
+        - [ ] Detailed Issue:
+        - [ ] Detailed Issue:
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_plan
+    attributes:
+      label: 구현 계획
+      description: 작업 순서를 간단히 작성하세요.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 완료 기준
+      description: PR 병합 전에 만족해야 하는 조건을 작성하세요.
+      value: |
+        - [ ] 기능이 요구사항대로 동작한다.
+        - [ ] 권한과 예외 케이스가 처리되어 있다.
+        - [ ] 관련 테스트 또는 수동 검증을 완료했다.
+        - [ ] 상위 Main Issue의 완료 기준과 충돌하지 않는다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: test_plan
+    attributes:
+      label: 테스트 계획
+      description: 자동 테스트 또는 수동 검증 시나리오를 작성하세요.
+      value: |
+        - [ ] 자동 테스트:
+        - [ ] 수동 검증:
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: 리스크 및 고려 사항
+      description: 구현 중 주의해야 할 기술적 리스크, 보안, 성능, 비용 이슈를 작성하세요.
+    validations:
+      required: false
