@@ -1,6 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
+import { profileSelect, serializeProfile } from "@/lib/profile";
+import { prisma } from "@/lib/prisma";
+
+import { ProfileSettingsForm } from "./profile-settings-form";
 
 type Props = {
   params: Promise<{
@@ -20,14 +24,20 @@ export default async function ProfileSettingsPage({ params }: Props) {
     notFound();
   }
 
+  const profile = await prisma.user.findUnique({
+    where: {
+      id: currentUser.id,
+    },
+    select: profileSelect,
+  });
+
+  if (!profile) {
+    redirect("/login");
+  }
+
   return (
     <main className="min-h-screen bg-[#f8f7f4] px-5 py-10 text-zinc-950">
-      <section className="mx-auto max-w-2xl border border-zinc-300 bg-white p-6">
-        <h1 className="text-2xl font-semibold tracking-normal">프로필 설정</h1>
-        <p className="mt-3 text-sm leading-6 text-zinc-600">
-          프로필 설정 화면은 프로필/레이아웃 이슈에서 구현한다.
-        </p>
-      </section>
+      <ProfileSettingsForm initialProfile={serializeProfile(profile)} />
     </main>
   );
 }

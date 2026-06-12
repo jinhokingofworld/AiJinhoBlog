@@ -12,6 +12,10 @@ model User {
   email        String    @unique @db.VarChar(191)
   username     String    @unique @db.VarChar(30)
   name         String    @db.VarChar(80)
+  intro        String?   @db.VarChar(50)
+  blogTitle    String    @default("AiJinhoBlog") @db.VarChar(80)
+  profileImageUrl String? @db.VarChar(255)
+  coverImageUrl   String? @db.VarChar(255)
   passwordHash String    @db.VarChar(255)
   posts        Post[]
   comments     Comment[]

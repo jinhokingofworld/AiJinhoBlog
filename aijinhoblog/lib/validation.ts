@@ -41,6 +41,11 @@ export type CommentInput = {
   content: string;
 };
 
+export type ProfileInput = {
+  intro?: string | null;
+  blogTitle?: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -190,6 +195,37 @@ export function parseCommentPayload(payload: unknown): Result<CommentInput> {
     value: {
       content,
     },
+  };
+}
+
+export function parseProfilePayload(payload: unknown): Result<ProfileInput> {
+  if (!isRecord(payload)) {
+    return { ok: false, error: "요청 본문이 올바르지 않습니다." };
+  }
+
+  const intro = readString(payload, "intro");
+  const blogTitle = readString(payload, "blogTitle");
+  const value: ProfileInput = {};
+
+  if ("intro" in payload) {
+    if (intro.length > 50) {
+      return { ok: false, error: "소개는 50자 이하로 작성해야 합니다." };
+    }
+
+    value.intro = intro || null;
+  }
+
+  if ("blogTitle" in payload) {
+    if (blogTitle.length < 1 || blogTitle.length > 80) {
+      return { ok: false, error: "블로그 타이틀은 1자 이상 80자 이하로 작성해야 합니다." };
+    }
+
+    value.blogTitle = blogTitle;
+  }
+
+  return {
+    ok: true,
+    value,
   };
 }
 
