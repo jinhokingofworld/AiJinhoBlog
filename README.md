@@ -4,6 +4,8 @@
 
 Phase 1의 구현 범위는 사용자별 블로그 홈, JWT 인증, 프로필/커버 이미지, 게시글, 댓글, 폴더 관리, 일반 키워드 검색, 페이지네이션입니다. Phase 1에서는 OpenAI 호출, RAG 파이프라인, ChromaDB 인덱싱을 실행하지 않습니다.
 
+Phase 2의 구현 범위는 게시글 전처리, chunk 분할, OpenAI embedding 호출, ChromaDB 저장/삭제, AI 요청 로그 기록입니다. 자연어 질문 기반 RAG 검색과 답변 생성은 Phase 3에서 구현합니다.
+
 ## 개발 환경
 
 - Node.js: `>=20.9.0`
@@ -53,6 +55,8 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `POST /api/me/posts`
 - `PATCH /api/me/posts/{postId}`
 - `DELETE /api/me/posts/{postId}`
+- `GET /api/me/posts/{postId}/vector-index`
+- `POST /api/me/posts/{postId}/vector-index`
 - `POST /api/posts/{postId}/comments`
 - `DELETE /api/comments/{commentId}`
 - `GET /api/me/folders`
@@ -89,7 +93,8 @@ npm run services:config
 실제 비밀키는 `.env`에만 넣고, 공유 가능한 기본값은 `.env.example`에 남깁니다.
 
 - `DATABASE_URL`: MySQL 연결 문자열
-- `OPENAI_API_KEY`: OpenAI API 키, Phase 2 이후 사용
-- `CHROMA_URL`: ChromaDB 서버 주소, Phase 2 이후 사용
-- `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름, Phase 2 이후 사용
+- `OPENAI_API_KEY`: OpenAI API 키. 비어 있으면 게시글 CRUD는 유지하고 벡터 인덱싱은 `SKIPPED`로 기록
+- `OPENAI_EMBEDDING_MODEL`: embedding 모델명
+- `CHROMA_URL`: ChromaDB 서버 주소
+- `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름
 - `DROPBOX_ACCESS_TOKEN`: Dropbox MCP 연동용 토큰, Phase 2 이후 사용

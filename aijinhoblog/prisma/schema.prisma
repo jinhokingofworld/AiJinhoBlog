@@ -21,6 +21,8 @@ model User {
   posts        Post[]
   comments     Comment[]
   sessions     Session[]
+  vectorIndexes PostVectorIndex[]
+  aiRequestLogs AiRequestLog[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -47,6 +49,20 @@ enum PostVisibility {
   PRIVATE
 }
 
+enum VectorIndexStatus {
+  PENDING
+  INDEXED
+  SKIPPED
+  FAILED
+  DELETED
+}
+
+enum AiRequestStatus {
+  SUCCESS
+  SKIPPED
+  FAILED
+}
+
 model Post {
   id          String         @id @default(cuid())
   title       String         @db.VarChar(160)
@@ -61,6 +77,8 @@ model Post {
   folder      Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
   comments    Comment[]
   tags        PostTag[]
+  vectorIndex PostVectorIndex?
+  aiRequestLogs AiRequestLog[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -114,4 +132,45 @@ model PostTag {
 
   @@id([postId, tagId])
   @@index([tagId])
+}
+
+model PostVectorIndex {
+  id            String            @id @default(cuid())
+  postId        String            @unique
+  post          Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  status        VectorIndexStatus @default(PENDING)
+  contentHash   String?           @db.Char(64)
+  chunkCount    Int               @default(0)
+  chunkIds      Json?
+  errorMessage  String?           @db.Text
+  lastIndexedAt DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([authorId, status])
+  @@index([updatedAt])
+}
+
+model AiRequestLog {
+  id           String          @id @default(cuid())
+  purpose      String          @db.VarChar(80)
+  provider     String          @db.VarChar(40)
+  model        String?         @db.VarChar(100)
+  status       AiRequestStatus
+  inputTokens  Int?
+  outputTokens Int?
+  totalTokens  Int?
+  errorMessage String?         @db.Text
+  metadata     Json?
+  postId       String?
+  post         Post?           @relation(fields: [postId], references: [id], onDelete: SetNull)
+  userId       String?
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+
+  @@index([postId, createdAt])
+  @@index([userId, createdAt])
+  @@index([purpose, status, createdAt])
 }
