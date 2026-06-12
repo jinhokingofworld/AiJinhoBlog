@@ -183,3 +183,59 @@ Prisma 7에서 `--to-schema-datamodel` 옵션이 제거되었고, 같은 용도�
 ### 해결 방법
 
 `prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script`로 명령을 변경해 초기 MySQL migration SQL을 생성했다.
+
+## 14. 루트 워크스페이스의 Prettier 실행 지연
+
+### 문제 정의
+
+`npm exec prettier -- --write plan1-review-draft.md`를 실행했지만 출력 없이 장시간 대기했고, 문서 포맷 적용 여부를 확인할 수 없어 명령을 중단했다.
+
+### 발생 원인
+
+루트 워크스페이스에는 `node_modules/.bin/prettier`가 없었다. 이 상태에서 `npm exec`가 패키지 해결 또는 다운로드를 시도하면서 네트워크 제한 환경에서 멈춘 것으로 판단된다.
+
+### 해결 방법
+
+명령을 중단하고 루트 `package.json`에 이미 정의된 `npm run format`을 사용했다. 이 스크립트는 `aijinhoblog/node_modules/.bin/prettier`를 직접 호출하므로 추가 네트워크 접근 없이 루트 문서까지 포맷할 수 있다. 이후 `npm run format:check`로 재검증한다.
+
+## 15. codex 슬래시 브랜치 생성 실패
+
+### 문제 정의
+
+`git switch -c codex/issue-18-phase1-routing-jwt` 실행 시 `cannot lock ref` 오류가 발생했고, 이어서 일반 브랜치 생성도 기본 샌드박스에서 `.git` lock 파일을 만들지 못했다.
+
+### 발생 원인
+
+현재 실행 환경은 기본 샌드박스에서 `.git/refs` 쓰기를 제한한다. 또한 `codex/...` 형태의 슬래시 브랜치 생성은 refs 하위 디렉터리를 만들어야 하므로 제한 환경에서 먼저 실패했다.
+
+### 해결 방법
+
+충돌 가능성이 낮은 `codex-issue-18-phase1-routing-jwt` 브랜치명을 사용하고, Git refs 쓰기가 허용된 컨텍스트에서 `git switch -c`를 다시 실행해 브랜치를 생성했다.
+
+## 16. 댓글 작성 응답의 author 타입 오류
+
+### 문제 정의
+
+`npm run build` 실행 시 `serializeComment`가 요구하는 `author.username` 필드가 댓글 작성 API 응답 include에 없어 타입 검사가 실패했다.
+
+### 발생 원인
+
+Phase 1 라우팅 작업에서 `User.username`을 필수 필드로 추가하고 공통 author 직렬화 타입에도 반영했지만, `app/api/posts/[id]/comments/route.ts`의 댓글 생성 include는 기존 `id`, `email`, `name`만 선택하고 있었다.
+
+### 해결 방법
+
+댓글 작성 API의 `author.select`에 `username: true`를 추가했다. 이후 권한 허용 컨텍스트에서 `npm run build`를 다시 실행해 타입 검사가 다음 단계로 진행되는지 확인했다.
+
+## 17. 로그인 페이지 useSearchParams Suspense 오류
+
+### 문제 정의
+
+`npm run build` 실행 시 `/login` 페이지에서 `useSearchParams()`가 Suspense boundary 없이 사용되어 prerender 오류가 발생했다.
+
+### 발생 원인
+
+Next.js App Router에서 `useSearchParams()`를 사용하는 클라이언트 컴포넌트는 정적 렌더링 시 Suspense boundary가 필요하다. 로그인 페이지에서는 단순히 `created=1` 완료 메시지만 읽기 위해 해당 훅을 사용하고 있었다.
+
+### 해결 방법
+
+`useSearchParams()` 의존성을 제거하고, 클라이언트 lazy state 초기화에서 `window.location.search`를 읽도록 변경했다. 이후 `npm run build`가 성공했다.

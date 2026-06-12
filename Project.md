@@ -6,6 +6,10 @@ AI는 작성자의 과거 게시글을 지식 기반(Knowledge Base)으로 삼�
 
 ## 2. 필수 기능 (Core Features)
 
+### Phase 1 범위 기준
+
+Phase 1에서는 **기본 블로그 기능을 완성하는 것**을 우선합니다. AI 요약, RAG, MCP, AI Agent, ChromaDB 인덱싱 같은 AI 활용 기능은 Phase 1에서 직접 구현하지 않고, 추후 확장 시 구조를 크게 바꾸지 않도록 데이터 모델과 서비스 경계만 고려합니다.
+
 ### 🛠 기본 블로그 기능
 
 - **회원 관리**: 회원가입 및 로그인
@@ -17,7 +21,9 @@ AI는 작성자의 과거 게시글을 지식 기반(Knowledge Base)으로 삼�
   - 게시글 페이징 처리
   - 키워드 검색
 
-### 🧠 AI 특화 기능
+### 🧠 추후 확장 AI 기능 (Phase 2 이후)
+
+아래 기능은 프로젝트의 장기 목표이며, Phase 1 구현 범위에서는 제외합니다.
 
 **① RAG (Retrieval-Augmented Generation)**
 
@@ -41,16 +47,16 @@ AI는 작성자의 과거 게시글을 지식 기반(Knowledge Base)으로 삼�
 
 ## 3. 프로젝트 기술 스택 (Tech Stack)
 
-| **분류**                | **기술 및 프레임워크** | **비고**                                                 |
-| ----------------------- | ---------------------- | -------------------------------------------------------- |
-| **Frontend**            | React                  |                                                          |
-| **Fullstack Framework** | Next.js                |                                                          |
-| **Database**            | MySQL + Prisma         |                                                          |
-| **LLM**                 | OpenAI                 |                                                          |
-| **Vector DB**           | ChromaDB               | MVP 기본값. MySQL HeatWave Vector Store는 운영 전환 후보 |
-| **RAG Framework**       | 자체 경량 파이프라인   | 필요 시 LangChain 또는 LlamaIndex 검토                   |
-| **MCP Framework**       | TypeScript MCP SDK     |                                                          |
-| **Agent Framework**     | 자체 서비스 레이어     | 필요 시 Agent framework 검토                             |
+| **분류**                | **기술 및 프레임워크** | **비고**                                                                   |
+| ----------------------- | ---------------------- | -------------------------------------------------------------------------- |
+| **Frontend**            | React                  |                                                                            |
+| **Fullstack Framework** | Next.js                |                                                                            |
+| **Database**            | MySQL + Prisma         |                                                                            |
+| **LLM**                 | OpenAI                 | Phase 2 이후 AI 기능 확장 시 적용                                          |
+| **Vector DB**           | ChromaDB               | Phase 2 이후 RAG 확장 기본값. MySQL HeatWave Vector Store는 운영 전환 후보 |
+| **RAG Framework**       | 자체 경량 파이프라인   | Phase 2 이후 필요 시 LangChain 또는 LlamaIndex 검토                        |
+| **MCP Framework**       | TypeScript MCP SDK     | Phase 2 이후 MCP 기능 확장 시 적용                                         |
+| **Agent Framework**     | 자체 서비스 레이어     | Phase 2 이후 필요 시 Agent framework 검토                                  |
 
 ## 4. 프로젝트 관리 및 개발 프로세스
 
@@ -82,6 +88,8 @@ AI는 작성자의 과거 게시글을 지식 기반(Knowledge Base)으로 삼�
 1. **메인 이슈 (Main Issue)**: 프로젝트의 큰 기능 단위를 정의합니다. (예: RAG 기능 구현, 회원 관리 시스템 등)
 2. **중간 사이즈 이슈 (Medium Issue)**: 메인 이슈를 여러 개의 독립적인 블록으로 나눈 단위입니다. **이 이슈를 기반으로 Git 브랜치를 생성하고 관리**합니다.
 3. **세부 이슈 (Detailed Issue)**: 중간 사이즈 이슈를 더 작게 쪼갠 실제 개발 작업 단위입니다. 2~3개의 체크리스트가 완료되면 종료(Close)할 수 있는 명확하고 가벼운 사이즈로 유지합니다.
+
+Main Issue와 Medium Issue를 함께 생성할 때는 Medium Issue를 Main Issue 본문의 단순 링크로만 남기지 않고, GitHub의 **sub-issue** 관계로 연결합니다. Main Issue는 상위 추적 단위로 두고, 실제 브랜치와 PR은 Medium Issue 기준으로 관리합니다.
 
 ### 🌿 브랜치 및 PR 전략 (Git Flow)
 

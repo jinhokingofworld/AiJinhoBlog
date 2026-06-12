@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createJwt,
   createSessionToken,
   hashPassword,
   hashSessionToken,
+  verifyJwt,
   verifyPassword,
 } from "@/lib/auth-crypto";
 
@@ -23,5 +25,13 @@ describe("auth crypto", () => {
     expect(token.length).toBeGreaterThan(20);
     expect(hash).toHaveLength(64);
     expect(hashSessionToken(token)).toBe(hash);
+  });
+
+  it("signs and verifies JWT payloads", () => {
+    const token = createJwt({ sub: "user-1", type: "access" }, new Date(Date.now() + 60_000));
+    const payload = verifyJwt(token);
+
+    expect(payload?.sub).toBe("user-1");
+    expect(payload?.type).toBe("access");
   });
 });

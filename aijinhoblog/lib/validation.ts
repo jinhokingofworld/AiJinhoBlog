@@ -1,4 +1,17 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$/;
+
+export const RESERVED_USERNAMES = new Set([
+  "account",
+  "admin",
+  "api",
+  "login",
+  "new",
+  "posts",
+  "settings",
+  "signup",
+  "static",
+]);
 
 type Result<T> =
   | {
@@ -14,6 +27,7 @@ export type CredentialsInput = {
   email: string;
   password: string;
   name?: string;
+  username?: string;
 };
 
 export type PostInput = {
@@ -38,6 +52,22 @@ function readString(source: Record<string, unknown>, field: string) {
 
 export function isValidEmail(email: string) {
   return EMAIL_PATTERN.test(email);
+}
+
+export function normalizeUsername(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export function validateUsername(username: string) {
+  if (!USERNAME_PATTERN.test(username)) {
+    return "username은 영문 소문자, 숫자, 하이픈만 사용해 3자 이상 30자 이하로 작성해야 합니다.";
+  }
+
+  if (RESERVED_USERNAMES.has(username)) {
+    return "예약된 username입니다.";
+  }
+
+  return null;
 }
 
 export function normalizeTags(value: unknown) {
@@ -69,7 +99,7 @@ export function normalizeTags(value: unknown) {
 
 export function parseCredentials(
   payload: unknown,
-  options: { requireName: boolean },
+  options: { requireName: boolean; requireUsername?: boolean },
 ): Result<CredentialsInput> {
   if (!isRecord(payload)) {
     return { ok: false, error: "요청 본문이 올바르지 않습니다." };
@@ -78,6 +108,7 @@ export function parseCredentials(
   const email = readString(payload, "email").toLowerCase();
   const password = readString(payload, "password");
   const name = readString(payload, "name");
+  const username = normalizeUsername(readString(payload, "username"));
 
   if (!isValidEmail(email)) {
     return { ok: false, error: "이메일 형식이 올바르지 않습니다." };
@@ -91,12 +122,21 @@ export function parseCredentials(
     return { ok: false, error: "이름은 2자 이상이어야 합니다." };
   }
 
+  if (options.requireUsername) {
+    const usernameError = validateUsername(username);
+
+    if (usernameError) {
+      return { ok: false, error: usernameError };
+    }
+  }
+
   return {
     ok: true,
     value: {
       email,
       password,
       name: name || undefined,
+      username: username || undefined,
     },
   };
 }
