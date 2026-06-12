@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { syncPostVectorIndex } from "@/lib/ai-indexing";
 import { resolvePostFolderId } from "@/lib/folders";
 import { fail, json, readJson } from "@/lib/http";
 import {
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
     },
     include: postSummaryInclude,
   });
+  const aiPipeline = await syncPostVectorIndex(post);
 
-  return json({ post: serializePost(post) }, 201);
+  return json({ post: serializePost(post), aiPipeline }, 201);
 }

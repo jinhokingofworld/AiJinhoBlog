@@ -351,3 +351,45 @@ Next.js 16 Turbopack 빌드 과정에서 CSS 처리를 위해 내부 프로세�
 ### 해결 방법
 
 동일한 로컬 API 호출을 권한 허용 컨텍스트에서 재실행해 브라우저 확인용 테스트 사용자 `searchmqb6czfg`와 공개 게시글 6개를 생성했다.
+
+## 26. 앱 패키지의 ChromaDB 모듈 resolve 실패
+
+### 문제 정의
+
+Phase 2에서 `chromadb` JS client를 동적 import하는 Chroma adapter를 구현한 뒤 `npm run build`를 실행했을 때 `Module not found: Can't resolve 'chromadb'` 오류가 발생했다.
+
+### 발생 원인
+
+`chromadb`는 루트 패키지 의존성에는 있었지만 `aijinhoblog` 앱 패키지 의존성에는 없었다. Next.js 빌드는 앱 패키지 기준으로 모듈을 해석하므로 서버 route에서 `chromadb` import를 resolve하지 못했다.
+
+### 해결 방법
+
+별도 앱 의존성을 추가하지 않고 ChromaDB v2 REST API를 직접 호출하는 방식으로 adapter를 변경했다. collection은 `get_or_create` 요청으로 준비하고, 반환된 collection id로 upsert/delete endpoint를 호출한다.
+
+## 27. Prisma JSON 입력 타입 오류
+
+### 문제 정의
+
+Phase 2 build 중 `AiRequestLog.metadata`에 `Record<string, unknown>` 값을 전달한 부분에서 TypeScript 오류가 발생했다.
+
+### 발생 원인
+
+Prisma Client의 JSON 입력 필드는 `Prisma.InputJsonValue` 타입을 요구한다. 일반 `Record<string, unknown>`은 JSON으로 직렬화 가능한 값이라는 보장이 타입상 부족해 빌드가 실패했다.
+
+### 해결 방법
+
+AI 작업 로그 metadata와 vector chunk id 배열을 Prisma JSON 입력 타입으로 명시했다. 이후 `npm run build`가 TypeScript 검사를 통과했다.
+
+## 28. 기존 Next dev 서버 충돌로 Phase 2 API 검증 서버 종료
+
+### 문제 정의
+
+Phase 2 런타임 API 검증을 위해 `next dev -p 3010`을 실행했지만 기존 `http://localhost:3001` dev 서버가 같은 앱 디렉터리에서 실행 중이라 새 서버가 종료됐다.
+
+### 발생 원인
+
+Next.js는 같은 프로젝트 디렉터리에서 이미 실행 중인 dev 서버를 감지하면 추가 dev 서버 실행을 막는다. 기존 서버는 Phase 1 검증 때 띄운 프로세스였다.
+
+### 해결 방법
+
+기존 Next dev 서버 프로세스를 종료한 뒤 `next dev -p 3010`을 다시 실행했다. 이후 Phase 2 회원가입, 로그인, 게시글 생성, 벡터 인덱싱 상태 조회, 수동 재인덱싱, 수정, 삭제 API 흐름을 검증했다.

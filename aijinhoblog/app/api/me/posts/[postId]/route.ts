@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { deletePostVectorIndex, syncPostVectorIndex } from "@/lib/ai-indexing";
 import { resolvePostFolderId } from "@/lib/folders";
 import { fail, json, readJson } from "@/lib/http";
 import { postDetailInclude, resolvePublishedAt, serializePost, toPostTagCreate } from "@/lib/posts";
@@ -77,8 +78,9 @@ export async function PATCH(request: Request, { params }: Params) {
       include: postDetailInclude,
     }),
   ]);
+  const aiPipeline = await syncPostVectorIndex(updatedPost);
 
-  return json({ post: serializePost(updatedPost) });
+  return json({ post: serializePost(updatedPost), aiPipeline });
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
@@ -106,11 +108,20 @@ export async function DELETE(_request: Request, { params }: Params) {
     return fail("게시글 작성자만 삭제할 수 있습니다.", 403);
   }
 
+  const aiPipeline = await deletePostVectorIndex({
+    id: postId,
+    authorId: user.id,
+  });
+
+  if (aiPipeline.status === "FAILED") {
+    return fail(aiPipeline.message, 502);
+  }
+
   await prisma.post.delete({
     where: {
       id: postId,
     },
   });
 
-  return json({ ok: true });
+  return json({ ok: true, aiPipeline });
 }

@@ -1,5 +1,6 @@
 import type { Prisma } from "@/lib/generated/prisma";
 
+import { syncPostVectorIndex } from "@/lib/ai-indexing";
 import { getCurrentUser } from "@/lib/auth";
 import { resolvePostFolderId } from "@/lib/folders";
 import { fail, json, readJson } from "@/lib/http";
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
     },
     include: postSummaryInclude,
   });
+  const aiPipeline = await syncPostVectorIndex(post);
 
-  return json({ post: serializePost(post) }, 201);
+  return json({ post: serializePost(post), aiPipeline }, 201);
 }
