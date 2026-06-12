@@ -12,35 +12,47 @@ type InitialPost = {
   content: string;
   status: PostStatusInput;
   visibility: PostVisibilityInput;
+  folderId: string | null;
   tags: {
     name: string;
   }[];
 };
 
+type FolderOption = {
+  id: string;
+  name: string;
+};
+
 type Props = {
   username: string;
   mode: "create" | "edit";
+  folders: FolderOption[];
   initialPost?: InitialPost;
 };
 
-function createInitialState(initialPost?: InitialPost) {
+function createInitialState(folders: FolderOption[], initialPost?: InitialPost) {
   return {
     title: initialPost?.title ?? "",
     excerpt: initialPost?.excerpt ?? "",
     content: initialPost?.content ?? "",
     tags: initialPost?.tags.map((tag) => tag.name).join(", ") ?? "",
     visibility: initialPost?.visibility ?? "PUBLIC",
+    folderId: initialPost?.folderId ?? folders[0]?.id ?? "",
   };
 }
 
-export function PostForm({ username, mode, initialPost }: Props) {
+export function PostForm({ username, mode, folders, initialPost }: Props) {
   const router = useRouter();
-  const initialState = useMemo(() => createInitialState(initialPost), [initialPost]);
+  const initialState = useMemo(
+    () => createInitialState(folders, initialPost),
+    [folders, initialPost],
+  );
   const [title, setTitle] = useState(initialState.title);
   const [excerpt, setExcerpt] = useState(initialState.excerpt);
   const [content, setContent] = useState(initialState.content);
   const [tags, setTags] = useState(initialState.tags);
   const [visibility, setVisibility] = useState<PostVisibilityInput>(initialState.visibility);
+  const [folderId, setFolderId] = useState(initialState.folderId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const isDirty =
@@ -48,7 +60,8 @@ export function PostForm({ username, mode, initialPost }: Props) {
     excerpt !== initialState.excerpt ||
     content !== initialState.content ||
     tags !== initialState.tags ||
-    visibility !== initialState.visibility;
+    visibility !== initialState.visibility ||
+    folderId !== initialState.folderId;
 
   useEffect(() => {
     if (!isDirty) {
@@ -85,6 +98,7 @@ export function PostForm({ username, mode, initialPost }: Props) {
           tags,
           status,
           visibility,
+          folderId,
         }),
       },
     );
@@ -163,6 +177,24 @@ export function PostForm({ username, mode, initialPost }: Props) {
           onChange={(event) => setContent(event.target.value)}
           value={content}
         />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium" htmlFor="folderId">
+          폴더
+        </label>
+        <select
+          className="mt-2 w-full border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-950"
+          id="folderId"
+          onChange={(event) => setFolderId(event.target.value)}
+          value={folderId}
+        >
+          {folders.map((folder) => (
+            <option key={folder.id} value={folder.id}>
+              {folder.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

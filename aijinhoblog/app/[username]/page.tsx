@@ -21,13 +21,23 @@ type Props = {
     username: string;
   }>;
   searchParams?: Promise<{
+    folderId?: string;
     page?: string;
     sort?: string;
   }>;
 };
 
-function createPageHref(username: string, page: number, sort: string) {
-  return `/${username}?page=${page}&sort=${sort}`;
+function createPageHref(username: string, page: number, sort: string, folderId?: string | null) {
+  const params = new URLSearchParams({
+    page: String(page),
+    sort,
+  });
+
+  if (folderId) {
+    params.set("folderId", folderId);
+  }
+
+  return `/${username}?${params.toString()}`;
 }
 
 function createPageNumbers(currentPage: number, totalPages: number) {
@@ -63,6 +73,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
     max: 1000,
   });
   const sort = normalizePostSort(query.sort ?? null);
+  const selectedFolderId = query.folderId?.trim() || null;
   const [currentUser, blog] = await Promise.all([
     getCurrentUser(),
     prisma.user.findUnique({
@@ -79,7 +90,45 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
 
   const isOwner = currentUser?.id === blog.id;
   const profile = serializeProfile(blog);
+  const folders = await prisma.folder.findMany({
+    where: {
+      ownerId: blog.id,
+      ...(isOwner
+        ? {}
+        : {
+            posts: {
+              some: {
+                status: "PUBLISHED",
+                visibility: "PUBLIC",
+              },
+            },
+          }),
+    },
+    orderBy: [
+      {
+        position: "asc",
+      },
+      {
+        createdAt: "asc",
+      },
+    ],
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+  const visibleFolderIds = new Set(folders.map((folder) => folder.id));
+
+  if (selectedFolderId && !visibleFolderIds.has(selectedFolderId)) {
+    notFound();
+  }
+
   const where = createPostAccessWhere(blog.id, currentUser?.id);
+
+  if (selectedFolderId) {
+    where.folderId = selectedFolderId;
+  }
+
   const total = await prisma.post.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / POST_PAGE_SIZE));
   const page = Math.min(requestedPage, totalPages);
@@ -95,6 +144,12 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
       content: true,
       status: true,
       visibility: true,
+      folder: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       createdAt: true,
     },
     skip: (page - 1) * POST_PAGE_SIZE,
@@ -150,7 +205,27 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
             <section className="border border-zinc-300 bg-white p-4">
               <h2 className="text-sm font-semibold">폴더</h2>
               <div className="mt-4 space-y-2">
-                <div className="border border-zinc-300 px-3 py-2 text-sm">기본 폴더</div>
+                <Link
+                  className={`block border border-zinc-300 px-3 py-2 text-sm ${selectedFolderId ? "hover:bg-zinc-50" : "bg-zinc-950 text-white"}`}
+                  href={createPageHref(profile.username, 1, sort)}
+                >
+                  전체
+                </Link>
+                {folders.length ? (
+                  folders.map((folder) => (
+                    <Link
+                      className={`block border border-zinc-300 px-3 py-2 text-sm ${selectedFolderId === folder.id ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                      href={createPageHref(profile.username, 1, sort, folder.id)}
+                      key={folder.id}
+                    >
+                      {folder.name}
+                    </Link>
+                  ))
+                ) : (
+                  <div className="border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-500">
+                    폴더가 없습니다.
+                  </div>
+                )}
               </div>
               {isOwner ? (
                 <Link
@@ -172,13 +247,13 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               <div className="inline-flex w-fit border border-zinc-300 text-sm">
                 <Link
                   className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, 1, "latest")}
+                  href={createPageHref(profile.username, 1, "latest", selectedFolderId)}
                 >
                   최신순
                 </Link>
                 <Link
                   className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, 1, "oldest")}
+                  href={createPageHref(profile.username, 1, "oldest", selectedFolderId)}
                 >
                   오래된순
                 </Link>
@@ -211,6 +286,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     </p>
                     <p className="mt-3 text-xs text-zinc-500">
                       {post.createdAt.toLocaleDateString("ko-KR")}
+                      {post.folder ? ` · ${post.folder.name}` : ""}
                     </p>
                   </Link>
                 ))
@@ -226,14 +302,19 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 <Link
                   aria-disabled={page <= 1}
                   className={`border border-zinc-300 px-3 py-2 ${page <= 1 ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, Math.max(1, page - 1), sort)}
+                  href={createPageHref(
+                    profile.username,
+                    Math.max(1, page - 1),
+                    sort,
+                    selectedFolderId,
+                  )}
                 >
                   이전
                 </Link>
                 {pageNumbers.map((pageNumber) => (
                   <Link
                     className={`border border-zinc-300 px-3 py-2 ${pageNumber === page ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                    href={createPageHref(profile.username, pageNumber, sort)}
+                    href={createPageHref(profile.username, pageNumber, sort, selectedFolderId)}
                     key={pageNumber}
                   >
                     {pageNumber}
@@ -242,7 +323,12 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 <Link
                   aria-disabled={page >= totalPages}
                   className={`border border-zinc-300 px-3 py-2 ${page >= totalPages ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, Math.min(totalPages, page + 1), sort)}
+                  href={createPageHref(
+                    profile.username,
+                    Math.min(totalPages, page + 1),
+                    sort,
+                    selectedFolderId,
+                  )}
                 >
                   다음
                 </Link>

@@ -94,6 +94,12 @@ export default async function PostDetailPage({ params }: Props) {
             tag: true,
           },
         },
+        folder: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         _count: {
           select: {
             comments: true,
@@ -178,8 +184,13 @@ export default async function PostDetailPage({ params }: Props) {
               ) : null}
             </div>
 
-            {serializedPost.tags.length ? (
+            {serializedPost.folder || serializedPost.tags.length ? (
               <div className="mt-5 flex flex-wrap gap-2">
+                {serializedPost.folder ? (
+                  <span className="border border-teal-200 bg-teal-50 px-2 py-1 text-xs text-teal-800">
+                    {serializedPost.folder.name}
+                  </span>
+                ) : null}
                 {serializedPost.tags.map((tag) => (
                   <span
                     className="border border-zinc-300 px-2 py-1 text-xs text-zinc-600"

@@ -30,6 +30,7 @@ export async function GET(request: Request, { params }: Params) {
     max: 30,
   });
   const sort = normalizePostSort(url.searchParams.get("sort"));
+  const folderId = url.searchParams.get("folderId")?.trim();
   const [currentUser, author] = await Promise.all([
     getCurrentUser(),
     prisma.user.findUnique({
@@ -47,6 +48,25 @@ export async function GET(request: Request, { params }: Params) {
   }
 
   const where = createPostAccessWhere(author.id, currentUser?.id);
+
+  if (folderId) {
+    const folder = await prisma.folder.findFirst({
+      where: {
+        id: folderId,
+        ownerId: author.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!folder) {
+      return fail("폴더를 찾을 수 없습니다.", 404);
+    }
+
+    where.folderId = folder.id;
+  }
+
   const [total, posts] = await prisma.$transaction([
     prisma.post.count({ where }),
     prisma.post.findMany({

@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { resolvePostFolderId } from "@/lib/folders";
 import { fail, json, readJson } from "@/lib/http";
 import {
   postSummaryInclude,
@@ -25,6 +26,12 @@ export async function POST(request: Request) {
     return fail(parsed.error, 400);
   }
 
+  const folder = await resolvePostFolderId(user.id, parsed.value.folderId);
+
+  if (!folder.ok) {
+    return fail(folder.error, 404);
+  }
+
   const post = await prisma.post.create({
     data: {
       title: parsed.value.title,
@@ -34,6 +41,7 @@ export async function POST(request: Request) {
       visibility: parsed.value.visibility,
       publishedAt: resolvePublishedAt(parsed.value.status),
       authorId: user.id,
+      folderId: folder.folderId,
       tags: {
         create: toPostTagCreate(parsed.value.tagNames),
       },

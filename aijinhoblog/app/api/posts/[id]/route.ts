@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { resolvePostFolderId } from "@/lib/folders";
 import { fail, json, readJson } from "@/lib/http";
 import {
   canReadPost,
@@ -68,6 +69,12 @@ export async function PATCH(request: Request, { params }: Params) {
     return fail("게시글 작성자만 수정할 수 있습니다.", 403);
   }
 
+  const folder = await resolvePostFolderId(user.id, parsed.value.folderId);
+
+  if (!folder.ok) {
+    return fail(folder.error, 404);
+  }
+
   const [, updatedPost] = await prisma.$transaction([
     prisma.postTag.deleteMany({
       where: {
@@ -85,6 +92,7 @@ export async function PATCH(request: Request, { params }: Params) {
         status: parsed.value.status,
         visibility: parsed.value.visibility,
         publishedAt: resolvePublishedAt(parsed.value.status, post.publishedAt),
+        folderId: folder.folderId,
         tags: {
           create: toPostTagCreate(parsed.value.tagNames),
         },
