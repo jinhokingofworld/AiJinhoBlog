@@ -266,4 +266,18 @@ Docker 데몬은 정상 실행됐지만 로컬에 `mysql:8.4` 이미지가 없�
 
 ### 해결 방법
 
-장시간 대기를 피하기 위해 pull 명령을 중단했다. 코드 레벨 검증은 `prisma validate`, `prisma generate`, `format:check`, `lint`, `test`, `build`로 완료한다. 게시글 작성/수정/상세/댓글의 실제 DB 연동 수동 검증은 `mysql:8.4` 이미지를 받을 수 있는 네트워크에서 `docker compose up -d mysql`, `npm run prisma:migrate`를 실행한 뒤 진행해야 한다.
+장시간 대기를 피하기 위해 최초 pull 명령은 중단했다. 이후 Docker Desktop을 다시 실행하고 `docker pull mysql:8.4`를 직접 실행했을 때 이미지 다운로드가 정상 진행되어 해결됐다. 그 다음 `docker compose up -d mysql`로 MySQL 컨테이너를 실행했다.
+
+## 20. Prisma migrate 로컬 캐시 권한 문제
+
+### 문제 정의
+
+MySQL 컨테이너가 healthy 상태가 된 뒤 `npm run prisma:migrate`를 기본 sandbox에서 실행했지만 `Schema engine error`만 출력되고 migration이 적용되지 않았다.
+
+### 발생 원인
+
+`DEBUG=prisma:* npx prisma migrate deploy`로 확인했을 때 Prisma CLI가 `/Users/j/Library/Caches/checkpoint-nodejs/...` 경로에 접근하다가 `EPERM` 오류를 만났다. DB 연결이나 migration SQL 자체 문제가 아니라 로컬 캐시/설정 파일 접근 권한 제한 때문에 schema engine이 실패한 것으로 판단했다.
+
+### 해결 방법
+
+동일한 `npm run prisma:migrate` 명령을 권한 허용 컨텍스트에서 다시 실행했다. 이후 5개 migration이 모두 적용됐고, 회원가입, 로그인, 기본 폴더/글, 게시글 작성/수정, 폴더 관리, 댓글 작성/삭제, 블로그 홈 렌더링까지 DB 기반 수동 검증을 완료했다.

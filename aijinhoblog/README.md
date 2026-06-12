@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AiJinhoBlog App
 
-## Getting Started
+Next.js App Router 기반 블로그 앱입니다. 루트 README의 개발 절차를 기준으로 실행합니다.
 
-First, run the development server:
+## 실행
+
+```bash
+npm run prisma:generate
+npm run dev
+```
+
+루트에서 실행할 때는 다음 명령을 사용합니다.
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 검증
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run prisma:validate
+npm run prisma:generate
+npm run format:check
+npm run lint
+npm run test
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Phase 1 범위
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- JWT httpOnly cookie 인증
+- 사용자별 블로그 홈
+- 프로필과 커버 이미지 설정
+- 게시글 목록, 상세, 작성, 수정
+- 댓글 작성과 삭제 권한
+- 폴더 생성, 이름 변경, 순서 변경, 삭제, 병합
+- AI 호출, RAG, ChromaDB 인덱싱은 Phase 2 이후로 분리
