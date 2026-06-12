@@ -1,12 +1,16 @@
 # AiJinhoBlog
 
-개인 블로그와 AI 기능을 결합하는 Next.js 기반 프로젝트입니다.
+개인 블로그 기능을 먼저 완성하고, 이후 AI 요약, RAG, MCP, Agent 기능을 확장하는 Next.js 기반 프로젝트입니다.
+
+Phase 1의 구현 범위는 사용자별 블로그 홈, JWT 인증, 프로필/커버 이미지, 게시글, 댓글, 폴더 관리입니다. Phase 1에서는 OpenAI 호출, RAG 파이프라인, ChromaDB 인덱싱을 실행하지 않습니다.
 
 ## 개발 환경
 
 - Node.js: `>=20.9.0`
 - npm: `>=10`
 - App: `aijinhoblog/`
+- DB: MySQL 8.4
+- Vector DB: ChromaDB, Phase 2 이후 사용
 
 ## 처음 실행
 
@@ -14,10 +18,69 @@
 nvm use
 npm run install:all
 npm run services:up
+npm run prisma:migrate
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000`을 열면 Next.js 앱을 확인할 수 있습니다.
+브라우저에서 `http://localhost:3000`을 엽니다.
+
+Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미지 pull이 지연되거나 실패하면 `Problem.md`의 `19. MySQL 이미지 pull 지연으로 DB 연동 수동 검증 차단`을 확인합니다.
+
+## 주요 라우트
+
+- `/`: 공개 시작 페이지
+- `/login`: 로그인
+- `/signup`: 회원가입
+- `/{username}`: 사용자별 블로그 홈
+- `/{username}/posts/new`: 글쓰기, 소유자 전용
+- `/{username}/posts/{postId}`: 게시글 상세
+- `/{username}/posts/{postId}/edit`: 글 수정, 소유자 전용
+- `/{username}/settings/profile`: 프로필 설정, 소유자 전용
+- `/{username}/settings/folders`: 폴더 관리, 소유자 전용
+
+## 주요 API
+
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `GET /api/users/{username}/profile`
+- `PATCH /api/me/profile`
+- `POST /api/me/profile-image`
+- `POST /api/me/cover-image`
+- `GET /api/users/{username}/posts`
+- `GET /api/users/{username}/posts/{postId}`
+- `POST /api/me/posts`
+- `PATCH /api/me/posts/{postId}`
+- `DELETE /api/me/posts/{postId}`
+- `POST /api/posts/{postId}/comments`
+- `DELETE /api/comments/{commentId}`
+- `GET /api/me/folders`
+- `POST /api/me/folders`
+- `PATCH /api/me/folders/{folderId}`
+- `DELETE /api/me/folders/{folderId}`
+- `POST /api/me/folders/{folderId}/merge`
+
+## 검증 명령어
+
+```bash
+npm run prisma:validate
+npm run prisma:generate
+npm run format:check
+npm run lint
+npm run test
+npm run build
+```
+
+DB 기반 수동 검증은 MySQL 컨테이너 실행과 migration 적용 이후 진행합니다.
+
+## 서비스 명령어
+
+```bash
+npm run services:up
+npm run services:down
+npm run services:config
+```
 
 ## 환경 변수
 
@@ -25,27 +88,8 @@ npm run dev
 
 실제 비밀키는 `.env`에만 넣고, 공유 가능한 기본값은 `.env.example`에 남깁니다.
 
-주요 변수는 다음과 같습니다.
-
 - `DATABASE_URL`: MySQL 연결 문자열
-- `OPENAI_API_KEY`: OpenAI API 키
-- `CHROMA_URL`: ChromaDB 서버 주소
-- `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름
-- `DROPBOX_ACCESS_TOKEN`: Dropbox MCP 연동용 토큰
-
-## 자주 쓰는 명령어
-
-```bash
-npm run dev
-npm run lint
-npm run format:check
-npm run build
-npm run start
-```
-
-로컬 MySQL과 ChromaDB는 Docker Compose로 실행합니다.
-
-```bash
-npm run services:up
-npm run services:down
-```
+- `OPENAI_API_KEY`: OpenAI API 키, Phase 2 이후 사용
+- `CHROMA_URL`: ChromaDB 서버 주소, Phase 2 이후 사용
+- `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름, Phase 2 이후 사용
+- `DROPBOX_ACCESS_TOKEN`: Dropbox MCP 연동용 토큰, Phase 2 이후 사용
