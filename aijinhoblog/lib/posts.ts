@@ -20,6 +20,12 @@ export const postSummaryInclude = {
       tag: true,
     },
   },
+  folder: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
   _count: {
     select: {
       comments: true,
@@ -76,6 +82,11 @@ type PostRecord = {
   status: PostStatusInput;
   visibility: PostVisibilityInput;
   publishedAt: Date | null;
+  folderId: string | null;
+  folder?: {
+    id: string;
+    name: string;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
   author: AuthorRecord;
@@ -154,6 +165,8 @@ export function serializePost(post: PostRecord) {
     status: post.status,
     visibility: post.visibility,
     publishedAt: post.publishedAt?.toISOString() ?? null,
+    folderId: post.folderId,
+    folder: post.folder,
     author: post.author,
     tags: post.tags.map(({ tag }) => tag),
     commentCount: post._count?.comments ?? post.comments?.length ?? 0,

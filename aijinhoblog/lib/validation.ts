@@ -36,14 +36,28 @@ export type PostInput = {
   content: string;
   status: PostStatusInput;
   visibility: PostVisibilityInput;
+  folderId: string | null;
   tagNames: string[];
 };
 
 export type PostStatusInput = "DRAFT" | "PUBLISHED";
 export type PostVisibilityInput = "PUBLIC" | "PRIVATE";
+export type FolderMoveDirection = "up" | "down";
 
 export type CommentInput = {
   content: string;
+};
+
+export type FolderInput = {
+  name: string;
+};
+
+export type FolderMoveInput = {
+  direction: FolderMoveDirection;
+};
+
+export type FolderMergeInput = {
+  targetFolderId: string;
 };
 
 export type ProfileInput = {
@@ -169,6 +183,7 @@ export function parsePostPayload(payload: unknown): Result<PostInput> {
   const content = readString(payload, "content");
   const status = parsePostStatus(payload.status);
   const visibility = parsePostVisibility(payload.visibility);
+  const folderId = readString(payload, "folderId");
   const tagNames = normalizeTags(payload.tagNames ?? payload.tags);
 
   if (title.length < 2 || title.length > 160) {
@@ -191,7 +206,65 @@ export function parsePostPayload(payload: unknown): Result<PostInput> {
       content,
       status,
       visibility,
+      folderId: folderId || null,
       tagNames,
+    },
+  };
+}
+
+export function parseFolderPayload(payload: unknown): Result<FolderInput> {
+  if (!isRecord(payload)) {
+    return { ok: false, error: "요청 본문이 올바르지 않습니다." };
+  }
+
+  const name = readString(payload, "name");
+
+  if (name.length < 1 || name.length > 80) {
+    return { ok: false, error: "폴더 이름은 1자 이상 80자 이하로 작성해야 합니다." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      name,
+    },
+  };
+}
+
+export function parseFolderMovePayload(payload: unknown): Result<FolderMoveInput> {
+  if (!isRecord(payload)) {
+    return { ok: false, error: "요청 본문이 올바르지 않습니다." };
+  }
+
+  const direction = payload.direction;
+
+  if (direction !== "up" && direction !== "down") {
+    return { ok: false, error: "폴더 이동 방향이 올바르지 않습니다." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      direction,
+    },
+  };
+}
+
+export function parseFolderMergePayload(payload: unknown): Result<FolderMergeInput> {
+  if (!isRecord(payload)) {
+    return { ok: false, error: "요청 본문이 올바르지 않습니다." };
+  }
+
+  const targetFolderId = readString(payload, "targetFolderId");
+
+  if (!targetFolderId) {
+    return { ok: false, error: "대상 폴더가 필요합니다." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      targetFolderId,
     },
   };
 }

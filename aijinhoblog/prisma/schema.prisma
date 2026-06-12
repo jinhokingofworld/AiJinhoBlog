@@ -17,6 +17,7 @@ model User {
   profileImageUrl String? @db.VarChar(255)
   coverImageUrl   String? @db.VarChar(255)
   passwordHash String    @db.VarChar(255)
+  folders      Folder[]
   posts        Post[]
   comments     Comment[]
   sessions     Session[]
@@ -56,6 +57,8 @@ model Post {
   publishedAt DateTime?
   authorId    String
   author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  folderId    String?
+  folder      Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
   comments    Comment[]
   tags        PostTag[]
   createdAt   DateTime       @default(now())
@@ -63,7 +66,23 @@ model Post {
 
   @@index([authorId, createdAt])
   @@index([authorId, status, visibility, createdAt])
+  @@index([folderId])
   @@index([createdAt])
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(80)
+  position  Int      @default(0)
+  isDefault Boolean  @default(false)
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, name])
+  @@index([ownerId, position])
 }
 
 model Comment {

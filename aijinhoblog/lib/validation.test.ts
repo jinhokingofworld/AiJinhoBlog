@@ -5,6 +5,9 @@ import {
   normalizeUsername,
   parseCommentPayload,
   parseCredentials,
+  parseFolderMergePayload,
+  parseFolderMovePayload,
+  parseFolderPayload,
   parsePositiveInt,
   parseProfilePayload,
   parsePostPayload,
@@ -79,6 +82,7 @@ describe("validation", () => {
         content: "본문은 최소 길이를 넘겨야 합니다.",
         status: "PUBLISHED",
         visibility: "PUBLIC",
+        folderId: null,
         tagNames: ["ai", "blog"],
       },
     });
@@ -98,6 +102,7 @@ describe("validation", () => {
         content: "짧음",
         status: "DRAFT",
         visibility: "PRIVATE",
+        folderId: null,
         tagNames: [],
       },
     });
@@ -123,5 +128,29 @@ describe("validation", () => {
 
     expect(parseProfilePayload({ intro: "a".repeat(51) }).ok).toBe(false);
     expect(parseProfilePayload({ blogTitle: "" }).ok).toBe(false);
+  });
+
+  it("validates folder payloads", () => {
+    expect(parseFolderPayload({ name: "기본 폴더" })).toEqual({
+      ok: true,
+      value: {
+        name: "기본 폴더",
+      },
+    });
+    expect(parseFolderPayload({ name: "" }).ok).toBe(false);
+    expect(parseFolderMovePayload({ direction: "up" })).toEqual({
+      ok: true,
+      value: {
+        direction: "up",
+      },
+    });
+    expect(parseFolderMovePayload({ direction: "left" }).ok).toBe(false);
+    expect(parseFolderMergePayload({ targetFolderId: "folder-2" })).toEqual({
+      ok: true,
+      value: {
+        targetFolderId: "folder-2",
+      },
+    });
+    expect(parseFolderMergePayload({}).ok).toBe(false);
   });
 });

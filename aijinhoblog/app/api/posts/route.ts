@@ -1,6 +1,7 @@
 import type { Prisma } from "@/lib/generated/prisma";
 
 import { getCurrentUser } from "@/lib/auth";
+import { resolvePostFolderId } from "@/lib/folders";
 import { fail, json, readJson } from "@/lib/http";
 import {
   normalizePostSort,
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
   const query = url.searchParams.get("query")?.trim();
   const tag = url.searchParams.get("tag")?.trim().toLowerCase();
   const sort = normalizePostSort(url.searchParams.get("sort"));
+  const folderId = url.searchParams.get("folderId")?.trim();
   const where: Prisma.PostWhereInput = {
     status: "PUBLISHED",
     visibility: "PUBLIC",
@@ -48,6 +50,10 @@ export async function GET(request: Request) {
         },
       },
     };
+  }
+
+  if (folderId) {
+    where.folderId = folderId;
   }
 
   const [total, posts] = await prisma.$transaction([
@@ -88,6 +94,12 @@ export async function POST(request: Request) {
     return fail(parsed.error, 400);
   }
 
+  const folder = await resolvePostFolderId(user.id, parsed.value.folderId);
+
+  if (!folder.ok) {
+    return fail(folder.error, 404);
+  }
+
   const post = await prisma.post.create({
     data: {
       title: parsed.value.title,
@@ -97,6 +109,7 @@ export async function POST(request: Request) {
       visibility: parsed.value.visibility,
       publishedAt: resolvePublishedAt(parsed.value.status),
       authorId: user.id,
+      folderId: folder.folderId,
       tags: {
         create: toPostTagCreate(parsed.value.tagNames),
       },
