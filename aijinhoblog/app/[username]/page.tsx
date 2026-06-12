@@ -5,9 +5,14 @@ import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
 import {
+  createPageWindow,
   createPostAccessWhere,
+  createPostListFilterWhere,
   createPostSummary,
   normalizePostSort,
+  normalizePostSearchQuery,
+  normalizePostTagFilter,
+  type PostListSort,
   POST_PAGE_SIZE,
 } from "@/lib/posts";
 import { profileSelect, serializeProfile } from "@/lib/profile";
@@ -23,11 +28,24 @@ type Props = {
   searchParams?: Promise<{
     folderId?: string;
     page?: string;
+    query?: string;
     sort?: string;
+    tag?: string;
   }>;
 };
 
-function createPageHref(username: string, page: number, sort: string, folderId?: string | null) {
+type BlogListHrefOptions = {
+  folderId?: string | null;
+  page: number;
+  query?: string | null;
+  sort: PostListSort;
+  tag?: string | null;
+};
+
+function createPageHref(
+  username: string,
+  { folderId, page, query, sort, tag }: BlogListHrefOptions,
+) {
   const params = new URLSearchParams({
     page: String(page),
     sort,
@@ -37,14 +55,15 @@ function createPageHref(username: string, page: number, sort: string, folderId?:
     params.set("folderId", folderId);
   }
 
+  if (query) {
+    params.set("query", query);
+  }
+
+  if (tag) {
+    params.set("tag", tag);
+  }
+
   return `/${username}?${params.toString()}`;
-}
-
-function createPageNumbers(currentPage: number, totalPages: number) {
-  const start = Math.max(1, currentPage - 2);
-  const end = Math.min(totalPages, start + 4);
-
-  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -73,6 +92,8 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
     max: 1000,
   });
   const sort = normalizePostSort(query.sort ?? null);
+  const searchQuery = normalizePostSearchQuery(query.query);
+  const selectedTag = normalizePostTagFilter(query.tag);
   const selectedFolderId = query.folderId?.trim() || null;
   const [currentUser, blog] = await Promise.all([
     getCurrentUser(),
@@ -117,6 +138,22 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
       name: true,
     },
   });
+  const tags = await prisma.tag.findMany({
+    where: {
+      posts: {
+        some: {
+          post: createPostAccessWhere(blog.id, currentUser?.id),
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
   const visibleFolderIds = new Set(folders.map((folder) => folder.id));
 
   if (selectedFolderId && !visibleFolderIds.has(selectedFolderId)) {
@@ -124,6 +161,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
   }
 
   const where = createPostAccessWhere(blog.id, currentUser?.id);
+  Object.assign(where, createPostListFilterWhere({ query: searchQuery, tag: selectedTag }));
 
   if (selectedFolderId) {
     where.folderId = selectedFolderId;
@@ -155,7 +193,8 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
     skip: (page - 1) * POST_PAGE_SIZE,
     take: POST_PAGE_SIZE,
   });
-  const pageNumbers = createPageNumbers(page, totalPages);
+  const pageNumbers = createPageWindow(page, totalPages);
+  const hasActiveFilters = Boolean(searchQuery || selectedTag || selectedFolderId);
 
   return (
     <main className="min-h-screen bg-[#f8f7f4] px-5 py-8 text-zinc-950">
@@ -207,7 +246,12 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               <div className="mt-4 space-y-2">
                 <Link
                   className={`block border border-zinc-300 px-3 py-2 text-sm ${selectedFolderId ? "hover:bg-zinc-50" : "bg-zinc-950 text-white"}`}
-                  href={createPageHref(profile.username, 1, sort)}
+                  href={createPageHref(profile.username, {
+                    page: 1,
+                    query: searchQuery,
+                    sort,
+                    tag: selectedTag,
+                  })}
                 >
                   전체
                 </Link>
@@ -215,7 +259,13 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   folders.map((folder) => (
                     <Link
                       className={`block border border-zinc-300 px-3 py-2 text-sm ${selectedFolderId === folder.id ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                      href={createPageHref(profile.username, 1, sort, folder.id)}
+                      href={createPageHref(profile.username, {
+                        folderId: folder.id,
+                        page: 1,
+                        query: searchQuery,
+                        sort,
+                        tag: selectedTag,
+                      })}
                       key={folder.id}
                     >
                       {folder.name}
@@ -236,6 +286,44 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 </Link>
               ) : null}
             </section>
+
+            <section className="border border-zinc-300 bg-white p-4">
+              <h2 className="text-sm font-semibold">태그</h2>
+              <div className="mt-4 space-y-2">
+                <Link
+                  className={`block border border-zinc-300 px-3 py-2 text-sm ${selectedTag ? "hover:bg-zinc-50" : "bg-zinc-950 text-white"}`}
+                  href={createPageHref(profile.username, {
+                    folderId: selectedFolderId,
+                    page: 1,
+                    query: searchQuery,
+                    sort,
+                  })}
+                >
+                  전체
+                </Link>
+                {tags.length ? (
+                  tags.map((tag) => (
+                    <Link
+                      className={`block border border-zinc-300 px-3 py-2 text-sm ${selectedTag === tag.name ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                      href={createPageHref(profile.username, {
+                        folderId: selectedFolderId,
+                        page: 1,
+                        query: searchQuery,
+                        sort,
+                        tag: tag.name,
+                      })}
+                      key={tag.id}
+                    >
+                      #{tag.name}
+                    </Link>
+                  ))
+                ) : (
+                  <div className="border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-500">
+                    태그가 없습니다.
+                  </div>
+                )}
+              </div>
+            </section>
           </aside>
 
           <section className="border border-zinc-300 bg-white p-6">
@@ -244,19 +332,74 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 <h2 className="text-lg font-semibold">글 목록</h2>
                 <p className="mt-1 text-sm text-zinc-500">총 {total}개</p>
               </div>
-              <div className="inline-flex w-fit border border-zinc-300 text-sm">
-                <Link
-                  className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, 1, "latest", selectedFolderId)}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="inline-flex w-fit border border-zinc-300 text-sm">
+                  <Link
+                    className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                    href={createPageHref(profile.username, {
+                      folderId: selectedFolderId,
+                      page: 1,
+                      query: searchQuery,
+                      sort: "latest",
+                      tag: selectedTag,
+                    })}
+                  >
+                    최신순
+                  </Link>
+                  <Link
+                    className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                    href={createPageHref(profile.username, {
+                      folderId: selectedFolderId,
+                      page: 1,
+                      query: searchQuery,
+                      sort: "oldest",
+                      tag: selectedTag,
+                    })}
+                  >
+                    오래된순
+                  </Link>
+                </div>
+                <form
+                  action={`/${profile.username}`}
+                  className="flex min-w-0 items-center gap-2"
+                  method="get"
                 >
-                  최신순
-                </Link>
-                <Link
-                  className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, 1, "oldest", selectedFolderId)}
-                >
-                  오래된순
-                </Link>
+                  <input name="sort" type="hidden" value={sort} />
+                  {selectedFolderId ? (
+                    <input name="folderId" type="hidden" value={selectedFolderId} />
+                  ) : null}
+                  {selectedTag ? <input name="tag" type="hidden" value={selectedTag} /> : null}
+                  <label className="sr-only" htmlFor="post-search">
+                    글 검색
+                  </label>
+                  <input
+                    className="h-9 min-w-0 flex-1 border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-950 sm:w-48"
+                    defaultValue={searchQuery ?? ""}
+                    id="post-search"
+                    name="query"
+                    placeholder="제목, 요약 검색"
+                    type="search"
+                  />
+                  <button
+                    className="h-9 shrink-0 rounded-md border border-zinc-300 px-3 text-sm font-medium hover:bg-zinc-100"
+                    type="submit"
+                  >
+                    검색
+                  </button>
+                  {searchQuery ? (
+                    <Link
+                      className="h-9 shrink-0 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100"
+                      href={createPageHref(profile.username, {
+                        folderId: selectedFolderId,
+                        page: 1,
+                        sort,
+                        tag: selectedTag,
+                      })}
+                    >
+                      초기화
+                    </Link>
+                  ) : null}
+                </form>
               </div>
             </div>
 
@@ -292,7 +435,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 ))
               ) : (
                 <div className="border border-dashed border-zinc-300 px-5 py-12 text-center text-sm text-zinc-500">
-                  아직 공개된 글이 없습니다.
+                  {hasActiveFilters ? "조건에 맞는 글이 없습니다." : "아직 공개된 글이 없습니다."}
                 </div>
               )}
             </div>
@@ -300,37 +443,48 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
             {totalPages > 1 ? (
               <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
                 <Link
+                  aria-label="이전 페이지"
                   aria-disabled={page <= 1}
                   className={`border border-zinc-300 px-3 py-2 ${page <= 1 ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(
-                    profile.username,
-                    Math.max(1, page - 1),
+                  href={createPageHref(profile.username, {
+                    folderId: selectedFolderId,
+                    page: Math.max(1, page - 1),
+                    query: searchQuery,
                     sort,
-                    selectedFolderId,
-                  )}
+                    tag: selectedTag,
+                  })}
                 >
-                  이전
+                  &lt;
                 </Link>
                 {pageNumbers.map((pageNumber) => (
                   <Link
+                    aria-current={pageNumber === page ? "page" : undefined}
                     className={`border border-zinc-300 px-3 py-2 ${pageNumber === page ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                    href={createPageHref(profile.username, pageNumber, sort, selectedFolderId)}
+                    href={createPageHref(profile.username, {
+                      folderId: selectedFolderId,
+                      page: pageNumber,
+                      query: searchQuery,
+                      sort,
+                      tag: selectedTag,
+                    })}
                     key={pageNumber}
                   >
                     {pageNumber}
                   </Link>
                 ))}
                 <Link
+                  aria-label="다음 페이지"
                   aria-disabled={page >= totalPages}
                   className={`border border-zinc-300 px-3 py-2 ${page >= totalPages ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(
-                    profile.username,
-                    Math.min(totalPages, page + 1),
+                  href={createPageHref(profile.username, {
+                    folderId: selectedFolderId,
+                    page: Math.min(totalPages, page + 1),
+                    query: searchQuery,
                     sort,
-                    selectedFolderId,
-                  )}
+                    tag: selectedTag,
+                  })}
                 >
-                  다음
+                  &gt;
                 </Link>
               </nav>
             ) : null}

@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { fail, json } from "@/lib/http";
 import {
+  createPostListFilterWhere,
   createPostAccessWhere,
   normalizePostSort,
   POST_PAGE_SIZE,
@@ -30,6 +31,8 @@ export async function GET(request: Request, { params }: Params) {
     max: 30,
   });
   const sort = normalizePostSort(url.searchParams.get("sort"));
+  const query = url.searchParams.get("query");
+  const tag = url.searchParams.get("tag");
   const folderId = url.searchParams.get("folderId")?.trim();
   const [currentUser, author] = await Promise.all([
     getCurrentUser(),
@@ -48,6 +51,7 @@ export async function GET(request: Request, { params }: Params) {
   }
 
   const where = createPostAccessWhere(author.id, currentUser?.id);
+  Object.assign(where, createPostListFilterWhere({ query, tag }));
 
   if (folderId) {
     const folder = await prisma.folder.findFirst({

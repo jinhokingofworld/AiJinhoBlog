@@ -1,7 +1,8 @@
 import type { Prisma } from "@/lib/generated/prisma";
 import type { PostStatusInput, PostVisibilityInput } from "@/lib/validation";
 
-export const POST_PAGE_SIZE = 6;
+export const POST_PAGE_SIZE = 5;
+export const POST_PAGE_WINDOW_SIZE = 5;
 export const RECENT_POST_LIMIT = 5;
 
 export type PostListSort = "latest" | "oldest";
@@ -99,6 +100,61 @@ type PostRecord = {
 
 export function normalizePostSort(value: string | null): PostListSort {
   return value === "oldest" ? "oldest" : "latest";
+}
+
+export function normalizePostSearchQuery(value: string | null | undefined) {
+  const query = value?.trim() ?? "";
+
+  return query || null;
+}
+
+export function normalizePostTagFilter(value: string | null | undefined) {
+  const tag = value?.trim().replace(/^#+/, "").toLowerCase() ?? "";
+
+  return tag || null;
+}
+
+export function createPostListFilterWhere({
+  query,
+  tag,
+}: {
+  query?: string | null;
+  tag?: string | null;
+}) {
+  const normalizedQuery = normalizePostSearchQuery(query);
+  const normalizedTag = normalizePostTagFilter(tag);
+  const where: Prisma.PostWhereInput = {};
+
+  if (normalizedQuery) {
+    where.OR = [
+      { title: { contains: normalizedQuery } },
+      { excerpt: { contains: normalizedQuery } },
+    ];
+  }
+
+  if (normalizedTag) {
+    where.tags = {
+      some: {
+        tag: {
+          name: normalizedTag,
+        },
+      },
+    };
+  }
+
+  return where;
+}
+
+export function createPageWindow(currentPage: number, totalPages: number) {
+  const safeTotalPages = Math.max(1, totalPages);
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), safeTotalPages);
+  const halfWindow = Math.floor(POST_PAGE_WINDOW_SIZE / 2);
+  let start = Math.max(1, safeCurrentPage - halfWindow);
+  const end = Math.min(safeTotalPages, start + POST_PAGE_WINDOW_SIZE - 1);
+
+  start = Math.max(1, end - POST_PAGE_WINDOW_SIZE + 1);
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
 
 export function createPostSummary(excerpt: string | null, content: string, maxLength = 120) {

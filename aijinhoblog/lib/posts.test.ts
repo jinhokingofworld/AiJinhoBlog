@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { canReadPost, createPostSummary, normalizePostSort, resolvePublishedAt } from "@/lib/posts";
+import {
+  canReadPost,
+  createPageWindow,
+  createPostListFilterWhere,
+  createPostSummary,
+  normalizePostSearchQuery,
+  normalizePostSort,
+  normalizePostTagFilter,
+  POST_PAGE_SIZE,
+  resolvePublishedAt,
+} from "@/lib/posts";
 
 describe("posts", () => {
   it("creates a fallback summary without calling AI features", () => {
@@ -13,6 +23,37 @@ describe("posts", () => {
     expect(normalizePostSort("oldest")).toBe("oldest");
     expect(normalizePostSort("latest")).toBe("latest");
     expect(normalizePostSort("bad")).toBe("latest");
+  });
+
+  it("normalizes keyword and tag filters", () => {
+    expect(normalizePostSearchQuery("  검색어  ")).toBe("검색어");
+    expect(normalizePostSearchQuery("   ")).toBeNull();
+    expect(normalizePostTagFilter(" #AI ")).toBe("ai");
+    expect(normalizePostTagFilter("")).toBeNull();
+  });
+
+  it("creates title and excerpt search filters", () => {
+    expect(createPostListFilterWhere({ query: "AI", tag: "blog" })).toEqual({
+      OR: [{ title: { contains: "AI" } }, { excerpt: { contains: "AI" } }],
+      tags: {
+        some: {
+          tag: {
+            name: "blog",
+          },
+        },
+      },
+    });
+  });
+
+  it("uses five posts as the default list page size", () => {
+    expect(POST_PAGE_SIZE).toBe(5);
+  });
+
+  it("creates a five-page pagination window", () => {
+    expect(createPageWindow(1, 10)).toEqual([1, 2, 3, 4, 5]);
+    expect(createPageWindow(4, 10)).toEqual([2, 3, 4, 5, 6]);
+    expect(createPageWindow(10, 10)).toEqual([6, 7, 8, 9, 10]);
+    expect(createPageWindow(1, 3)).toEqual([1, 2, 3]);
   });
 
   it("allows owners to read drafts and private posts", () => {
