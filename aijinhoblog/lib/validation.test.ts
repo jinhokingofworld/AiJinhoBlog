@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   normalizeTags,
+  normalizeUsername,
   parseCommentPayload,
   parseCredentials,
   parsePositiveInt,
   parsePostPayload,
+  validateUsername,
 } from "@/lib/validation";
 
 describe("validation", () => {
@@ -25,6 +27,7 @@ describe("validation", () => {
         email: "user@example.com",
         password: "12345678",
         name: "진호",
+        username: undefined,
       },
     });
 
@@ -32,6 +35,32 @@ describe("validation", () => {
       parseCredentials({ email: "bad", password: "12345678", name: "진호" }, { requireName: true })
         .ok,
     ).toBe(false);
+  });
+
+  it("validates usernames", () => {
+    expect(normalizeUsername(" Jinho-Blog ")).toBe("jinho-blog");
+    expect(validateUsername("jinho-blog")).toBeNull();
+    expect(validateUsername("ji")).toBeTruthy();
+    expect(validateUsername("login")).toBeTruthy();
+    expect(
+      parseCredentials(
+        {
+          email: "USER@example.com",
+          password: "12345678",
+          name: "진호",
+          username: "Jinho-Blog",
+        },
+        { requireName: true, requireUsername: true },
+      ),
+    ).toEqual({
+      ok: true,
+      value: {
+        email: "user@example.com",
+        password: "12345678",
+        name: "진호",
+        username: "jinho-blog",
+      },
+    });
   });
 
   it("validates post and comment payloads", () => {

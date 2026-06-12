@@ -51,6 +51,7 @@ export async function POST(request: Request, { params }: Params) {
         select: {
           id: true,
           email: true,
+          username: true,
           name: true,
         },
       },
