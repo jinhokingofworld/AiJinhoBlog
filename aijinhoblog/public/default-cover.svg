@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 260" role="img" aria-label="Default blog cover image">
+  <rect width="1080" height="260" fill="#f8f7f4"/>
+  <path d="M0 200h1080v60H0z" fill="#e7e5e4"/>
+  <path d="M80 188c140-96 260-96 400 0s260 96 520 0v72H80z" fill="#d6d3d1"/>
+  <circle cx="860" cy="76" r="34" fill="#0f766e"/>
+  <path d="M120 74h300" stroke="#27272a" stroke-width="8" stroke-linecap="round"/>
+  <path d="M120 112h220" stroke="#71717a" stroke-width="6" stroke-linecap="round"/>
+</svg>

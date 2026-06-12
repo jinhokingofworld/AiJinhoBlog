@@ -6,6 +6,7 @@ import {
   parseCommentPayload,
   parseCredentials,
   parsePositiveInt,
+  parseProfilePayload,
   parsePostPayload,
   validateUsername,
 } from "@/lib/validation";
@@ -88,5 +89,18 @@ describe("validation", () => {
     expect(parsePositiveInt("2", 1, { min: 1, max: 10 })).toBe(2);
     expect(parsePositiveInt("200", 1, { min: 1, max: 10 })).toBe(10);
     expect(parsePositiveInt("bad", 1, { min: 1, max: 10 })).toBe(1);
+  });
+
+  it("validates profile payloads", () => {
+    expect(parseProfilePayload({ intro: "안녕하세요", blogTitle: "AiJinhoBlog" })).toEqual({
+      ok: true,
+      value: {
+        intro: "안녕하세요",
+        blogTitle: "AiJinhoBlog",
+      },
+    });
+
+    expect(parseProfilePayload({ intro: "a".repeat(51) }).ok).toBe(false);
+    expect(parseProfilePayload({ blogTitle: "" }).ok).toBe(false);
   });
 });
