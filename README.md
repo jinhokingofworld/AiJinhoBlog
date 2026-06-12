@@ -2,7 +2,7 @@
 
 개인 블로그 기능을 먼저 완성하고, 이후 AI 요약, RAG, MCP, Agent 기능을 확장하는 Next.js 기반 프로젝트입니다.
 
-Phase 1의 구현 범위는 사용자별 블로그 홈, JWT 인증, 프로필/커버 이미지, 게시글, 댓글, 폴더 관리입니다. Phase 1에서는 OpenAI 호출, RAG 파이프라인, ChromaDB 인덱싱을 실행하지 않습니다.
+Phase 1의 구현 범위는 사용자별 블로그 홈, JWT 인증, 프로필/커버 이미지, 게시글, 댓글, 폴더 관리, 일반 키워드 검색, 페이지네이션입니다. Phase 1에서는 OpenAI 호출, RAG 파이프라인, ChromaDB 인덱싱을 실행하지 않습니다.
 
 ## 개발 환경
 
@@ -48,7 +48,7 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `PATCH /api/me/profile`
 - `POST /api/me/profile-image`
 - `POST /api/me/cover-image`
-- `GET /api/users/{username}/posts`
+- `GET /api/users/{username}/posts`: `page`, `pageSize`, `sort`, `folderId`, `query`, `tag` 지원
 - `GET /api/users/{username}/posts/{postId}`
 - `POST /api/me/posts`
 - `PATCH /api/me/posts/{postId}`

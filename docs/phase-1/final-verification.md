@@ -11,6 +11,8 @@
 - 사용자별 블로그 홈, 프로필, 커버 이미지
 - 게시글 목록, 상세, 작성, 수정
 - 공개 여부, 임시저장 상태, 폴더 선택
+- 제목/요약 기반 일반 키워드 검색, 태그 필터
+- 글 목록 기본 5개 페이지네이션과 `<`, 5개 페이지 번호, `>` 이동
 - 댓글 작성과 삭제 권한
 - 폴더 1:N 게시글 관계, 폴더 생성/이름 변경/순서 변경/삭제/병합
 - 첫 로그인 직후 기본 폴더와 기본 글 생성
@@ -28,6 +30,8 @@
 | 프로필 설정      | `/{username}/settings/profile`                              | 구현 완료 |
 | 폴더 관리        | `/{username}/settings/folders`                              | 구현 완료 |
 | 게시글 API       | `/api/users/{username}/posts`, `/api/me/posts` 계열         | 구현 완료 |
+| 게시글 검색      | `query` 제목/요약 검색, `tag` 태그 필터                     | 구현 완료 |
+| 페이지네이션     | 기본 5개, `<`, 5개 페이지 번호, `>`                         | 구현 완료 |
 | 댓글 API         | `/api/posts/{postId}/comments`, `/api/comments/{commentId}` | 구현 완료 |
 | 폴더 API         | `/api/me/folders` 계열                                      | 구현 완료 |
 | AI 요약 fallback | 직접 AI 호출 없이 본문/요약 문자열 표시                     | 구현 완료 |
@@ -51,6 +55,15 @@ DB 없이 확인 가능한 보호 라우트 리다이렉트를 확인했다.
 
 - 비로그인 상태에서 `/jinho/posts/new` 접근 시 `/login`으로 이동
 - 비로그인 상태에서 `/jinho/settings/folders` 접근 시 `/login`으로 이동
+
+일반 키워드 검색과 페이지네이션 보강 후 로컬 dev 서버에서 테스트 사용자 `searchmqb6czfg`를 생성해 확인했다.
+
+- `/searchmqb6czfg`: 기본 목록에서 게시글 5개와 `<`, `1`, `2`, `>` 페이지네이션 표시
+- `/searchmqb6czfg?query=검색&sort=latest`: 제목/요약에 `검색`이 포함된 글만 표시
+- `/searchmqb6czfg?tag=ai&sort=latest`: `ai` 태그 글만 표시
+- `/searchmqb6czfg?query=요약%20검색&tag=ai&sort=latest`: 검색어와 태그 필터 동시 적용
+- `/searchmqb6czfg?query=본문&sort=latest`: 본문에만 있는 단어는 검색 결과에서 제외
+- 모바일 폭 390px에서 검색 폼과 페이지네이션의 가로 overflow 없음
 
 ## DB 수동 검증 상태
 

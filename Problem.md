@@ -281,3 +281,73 @@ MySQL 컨테이너가 healthy 상태가 된 뒤 `npm run prisma:migrate`를 기�
 ### 해결 방법
 
 동일한 `npm run prisma:migrate` 명령을 권한 허용 컨텍스트에서 다시 실행했다. 이후 5개 migration이 모두 적용됐고, 회원가입, 로그인, 기본 폴더/글, 게시글 작성/수정, 폴더 관리, 댓글 작성/삭제, 블로그 홈 렌더링까지 DB 기반 수동 검증을 완료했다.
+
+## 21. GitHub CLI 토큰 만료로 이슈 생성 차단
+
+### 문제 정의
+
+Phase 1 일반 키워드 검색과 페이지네이션 보강 작업을 시작하기 전에 `gh`로 GitHub 이슈를 생성하려 했지만 `gh auth status`에서 로그인 실패가 발생했다.
+
+### 발생 원인
+
+`gh`에 저장된 `jinhokingofworld` 계정 토큰이 invalid 상태였다. `gh auth login -h github.com`을 실행했지만 대화형 인증 프롬프트가 현재 실행 환경에서 정상적으로 다음 단계로 진행되지 않아 이슈 생성까지 완료하지 못했다.
+
+### 해결 방법
+
+로컬 구현과 검증은 별도 브랜치에서 진행하고, GitHub 이슈 생성, 이슈 체크리스트 갱신, PR 생성은 `gh auth login -h github.com`으로 인증을 복구한 뒤 이어서 처리한다.
+
+## 22. 기본 샌드박스의 Git ref 쓰기 제한
+
+### 문제 정의
+
+`git switch -c codex/phase1-keyword-search-pagination` 명령이 기본 실행 컨텍스트에서 `cannot lock ref` 오류로 실패했다.
+
+### 발생 원인
+
+현재 기본 샌드박스는 `.git/refs` 쓰기를 제한한다. 브랜치 생성은 Git ref 파일 또는 디렉터리를 생성해야 하므로 기본 컨텍스트에서 실패했다.
+
+### 해결 방법
+
+동일한 브랜치 생성 명령을 Git ref 쓰기가 허용된 컨텍스트에서 다시 실행해 `codex/phase1-keyword-search-pagination` 브랜치를 생성했다.
+
+## 23. 페이지네이션 helper의 prefer-const lint 오류
+
+### 문제 정의
+
+Phase 1 일반 키워드 검색과 페이지네이션 보강 후 `npm run lint`를 실행했을 때 `aijinhoblog/lib/posts.ts`의 `createPageWindow` 함수에서 `end` 변수에 대해 `prefer-const` 오류가 발생했다.
+
+### 발생 원인
+
+페이지 번호 창 계산 과정에서 `start`는 끝 페이지 기준으로 보정되지만, `end`는 최초 계산 이후 재할당되지 않는다. 그런데 구현 시 두 변수를 모두 `let`으로 선언했다.
+
+### 해결 방법
+
+재할당되는 `start`는 `let`으로 유지하고, 재할당되지 않는 `end`는 `const`로 변경했다. 이후 lint를 다시 실행해 확인한다.
+
+## 24. Turbopack build의 로컬 포트 바인딩 권한 문제
+
+### 문제 정의
+
+Phase 1 일반 키워드 검색과 페이지네이션 보강 후 `npm run build`를 기본 sandbox에서 실행했을 때 Turbopack 내부 오류가 발생했다. 오류 메시지는 `app/globals.css` 처리 중 `creating new process`, `binding to a port`, `Operation not permitted`였다.
+
+### 발생 원인
+
+Next.js 16 Turbopack 빌드 과정에서 CSS 처리를 위해 내부 프로세스가 로컬 포트를 바인딩하려 했지만, 기본 sandbox 실행 컨텍스트가 해당 동작을 허용하지 않았다. 애플리케이션 타입 오류가 아니라 실행 권한 문제로 판단했다.
+
+### 해결 방법
+
+동일한 `npm run build` 명령을 권한 허용 컨텍스트에서 재실행했다. 빌드와 TypeScript 검사, 정적 페이지 생성이 모두 성공했다.
+
+## 25. 로컬 dev 서버 API 호출의 sandbox 네트워크 제한
+
+### 문제 정의
+
+브라우저 수동 확인용 테스트 데이터를 만들기 위해 `http://localhost:3001`의 회원가입/로그인/게시글 작성 API를 호출했지만 기본 sandbox에서 `fetch failed`, `EPERM` 오류가 발생했다.
+
+### 발생 원인
+
+현재 기본 실행 컨텍스트는 로컬 네트워크 연결도 제한한다. Next.js dev 서버는 실행 중이었지만, 기본 sandbox에서 해당 포트로 연결할 권한이 없어 API 호출이 실패했다.
+
+### 해결 방법
+
+동일한 로컬 API 호출을 권한 허용 컨텍스트에서 재실행해 브라우저 확인용 테스트 사용자 `searchmqb6czfg`와 공개 게시글 6개를 생성했다.

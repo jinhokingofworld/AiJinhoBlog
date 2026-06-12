@@ -4,7 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { resolvePostFolderId } from "@/lib/folders";
 import { fail, json, readJson } from "@/lib/http";
 import {
+  createPostListFilterWhere,
   normalizePostSort,
+  POST_PAGE_SIZE,
   postSummaryInclude,
   resolvePublishedAt,
   serializePost,
@@ -21,12 +23,12 @@ export async function GET(request: Request) {
     min: 1,
     max: 1000,
   });
-  const pageSize = parsePositiveInt(url.searchParams.get("pageSize"), 10, {
+  const pageSize = parsePositiveInt(url.searchParams.get("pageSize"), POST_PAGE_SIZE, {
     min: 1,
     max: 30,
   });
-  const query = url.searchParams.get("query")?.trim();
-  const tag = url.searchParams.get("tag")?.trim().toLowerCase();
+  const query = url.searchParams.get("query");
+  const tag = url.searchParams.get("tag");
   const sort = normalizePostSort(url.searchParams.get("sort"));
   const folderId = url.searchParams.get("folderId")?.trim();
   const where: Prisma.PostWhereInput = {
@@ -34,23 +36,7 @@ export async function GET(request: Request) {
     visibility: "PUBLIC",
   };
 
-  if (query) {
-    where.OR = [
-      { title: { contains: query } },
-      { excerpt: { contains: query } },
-      { content: { contains: query } },
-    ];
-  }
-
-  if (tag) {
-    where.tags = {
-      some: {
-        tag: {
-          name: tag,
-        },
-      },
-    };
-  }
+  Object.assign(where, createPostListFilterWhere({ query, tag }));
 
   if (folderId) {
     where.folderId = folderId;
