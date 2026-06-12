@@ -1,12 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { fail, json, readJson } from "@/lib/http";
-import {
-  canReadPost,
-  postDetailInclude,
-  resolvePublishedAt,
-  serializePost,
-  toPostTagCreate,
-} from "@/lib/posts";
+import { postDetailInclude, resolvePublishedAt, serializePost, toPostTagCreate } from "@/lib/posts";
 import { prisma } from "@/lib/prisma";
 import { parsePostPayload } from "@/lib/validation";
 
@@ -14,26 +8,9 @@ export const runtime = "nodejs";
 
 type Params = {
   params: Promise<{
-    id: string;
+    postId: string;
   }>;
 };
-
-export async function GET(_request: Request, { params }: Params) {
-  const currentUser = await getCurrentUser();
-  const { id } = await params;
-  const post = await prisma.post.findUnique({
-    where: {
-      id,
-    },
-    include: postDetailInclude,
-  });
-
-  if (!post || !canReadPost(post, currentUser?.id)) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
-  }
-
-  return json({ post: serializePost(post) });
-}
 
 export async function PATCH(request: Request, { params }: Params) {
   const user = await getCurrentUser();
@@ -42,7 +19,7 @@ export async function PATCH(request: Request, { params }: Params) {
     return fail("로그인이 필요합니다.", 401);
   }
 
-  const { id } = await params;
+  const { postId } = await params;
   const payload = await readJson(request);
   const parsed = parsePostPayload(payload);
 
@@ -52,7 +29,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const post = await prisma.post.findUnique({
     where: {
-      id,
+      id: postId,
     },
     select: {
       authorId: true,
@@ -71,12 +48,12 @@ export async function PATCH(request: Request, { params }: Params) {
   const [, updatedPost] = await prisma.$transaction([
     prisma.postTag.deleteMany({
       where: {
-        postId: id,
+        postId,
       },
     }),
     prisma.post.update({
       where: {
-        id,
+        id: postId,
       },
       data: {
         title: parsed.value.title,
@@ -103,10 +80,10 @@ export async function DELETE(_request: Request, { params }: Params) {
     return fail("로그인이 필요합니다.", 401);
   }
 
-  const { id } = await params;
+  const { postId } = await params;
   const post = await prisma.post.findUnique({
     where: {
-      id,
+      id: postId,
     },
     select: {
       authorId: true,
@@ -123,7 +100,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   await prisma.post.delete({
     where: {
-      id,
+      id: postId,
     },
   });
 

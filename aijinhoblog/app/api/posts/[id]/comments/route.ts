@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { fail, json, readJson } from "@/lib/http";
-import { serializeComment } from "@/lib/posts";
+import { canReadPost, serializeComment } from "@/lib/posts";
 import { prisma } from "@/lib/prisma";
 import { parseCommentPayload } from "@/lib/validation";
 
@@ -33,10 +33,13 @@ export async function POST(request: Request, { params }: Params) {
     },
     select: {
       id: true,
+      authorId: true,
+      status: true,
+      visibility: true,
     },
   });
 
-  if (!post) {
+  if (!post || !canReadPost(post, user.id)) {
     return fail("게시글을 찾을 수 없습니다.", 404);
   }
 

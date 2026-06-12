@@ -34,8 +34,13 @@ export type PostInput = {
   title: string;
   excerpt: string | null;
   content: string;
+  status: PostStatusInput;
+  visibility: PostVisibilityInput;
   tagNames: string[];
 };
+
+export type PostStatusInput = "DRAFT" | "PUBLISHED";
+export type PostVisibilityInput = "PUBLIC" | "PRIVATE";
 
 export type CommentInput = {
   content: string;
@@ -102,6 +107,14 @@ export function normalizeTags(value: unknown) {
   return tags;
 }
 
+function parsePostStatus(value: unknown): PostStatusInput {
+  return value === "DRAFT" ? "DRAFT" : "PUBLISHED";
+}
+
+function parsePostVisibility(value: unknown): PostVisibilityInput {
+  return value === "PRIVATE" ? "PRIVATE" : "PUBLIC";
+}
+
 export function parseCredentials(
   payload: unknown,
   options: { requireName: boolean; requireUsername?: boolean },
@@ -154,13 +167,15 @@ export function parsePostPayload(payload: unknown): Result<PostInput> {
   const title = readString(payload, "title");
   const excerpt = readString(payload, "excerpt");
   const content = readString(payload, "content");
+  const status = parsePostStatus(payload.status);
+  const visibility = parsePostVisibility(payload.visibility);
   const tagNames = normalizeTags(payload.tagNames ?? payload.tags);
 
   if (title.length < 2 || title.length > 160) {
     return { ok: false, error: "제목은 2자 이상 160자 이하로 작성해야 합니다." };
   }
 
-  if (content.length < 10) {
+  if (status === "PUBLISHED" && content.length < 10) {
     return { ok: false, error: "본문은 10자 이상 작성해야 합니다." };
   }
 
@@ -174,6 +189,8 @@ export function parsePostPayload(payload: unknown): Result<PostInput> {
       title,
       excerpt: excerpt || null,
       content,
+      status,
+      visibility,
       tagNames,
     },
   };

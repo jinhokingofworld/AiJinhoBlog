@@ -36,19 +36,33 @@ model Session {
   @@index([expiresAt])
 }
 
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PostVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 model Post {
-  id        String    @id @default(cuid())
-  title     String    @db.VarChar(160)
-  excerpt   String?   @db.VarChar(280)
-  content   String    @db.Text
-  authorId  String
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments  Comment[]
-  tags      PostTag[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String         @id @default(cuid())
+  title       String         @db.VarChar(160)
+  excerpt     String?        @db.VarChar(280)
+  content     String         @db.Text
+  status      PostStatus     @default(PUBLISHED)
+  visibility  PostVisibility @default(PUBLIC)
+  publishedAt DateTime?
+  authorId    String
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  tags        PostTag[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@index([authorId, createdAt])
+  @@index([authorId, status, visibility, createdAt])
   @@index([createdAt])
 }
 
