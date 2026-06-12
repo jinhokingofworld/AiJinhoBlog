@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
+import { PostForm } from "@/app/[username]/posts/post-form";
 
 type Props = {
   params: Promise<{
@@ -24,9 +25,9 @@ export default async function NewPostPage({ params }: Props) {
     <main className="min-h-screen bg-[#f8f7f4] px-5 py-10 text-zinc-950">
       <section className="mx-auto max-w-2xl border border-zinc-300 bg-white p-6">
         <h1 className="text-2xl font-semibold tracking-normal">글쓰기</h1>
-        <p className="mt-3 text-sm leading-6 text-zinc-600">
-          게시글 작성 화면은 게시글 관리 이슈에서 구현한다.
-        </p>
+        <div className="mt-6">
+          <PostForm mode="create" username={username} />
+        </div>
       </section>
     </main>
   );

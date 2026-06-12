@@ -2,7 +2,13 @@ import type { Prisma } from "@/lib/generated/prisma";
 
 import { getCurrentUser } from "@/lib/auth";
 import { fail, json, readJson } from "@/lib/http";
-import { postSummaryInclude, serializePost, toPostTagCreate } from "@/lib/posts";
+import {
+  normalizePostSort,
+  postSummaryInclude,
+  resolvePublishedAt,
+  serializePost,
+  toPostTagCreate,
+} from "@/lib/posts";
 import { prisma } from "@/lib/prisma";
 import { parsePositiveInt, parsePostPayload } from "@/lib/validation";
 
@@ -20,7 +26,11 @@ export async function GET(request: Request) {
   });
   const query = url.searchParams.get("query")?.trim();
   const tag = url.searchParams.get("tag")?.trim().toLowerCase();
-  const where: Prisma.PostWhereInput = {};
+  const sort = normalizePostSort(url.searchParams.get("sort"));
+  const where: Prisma.PostWhereInput = {
+    status: "PUBLISHED",
+    visibility: "PUBLIC",
+  };
 
   if (query) {
     where.OR = [
@@ -46,7 +56,7 @@ export async function GET(request: Request) {
       where,
       include: postSummaryInclude,
       orderBy: {
-        createdAt: "desc",
+        createdAt: sort === "oldest" ? "asc" : "desc",
       },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -83,6 +93,9 @@ export async function POST(request: Request) {
       title: parsed.value.title,
       excerpt: parsed.value.excerpt,
       content: parsed.value.content,
+      status: parsed.value.status,
+      visibility: parsed.value.visibility,
+      publishedAt: resolvePublishedAt(parsed.value.status),
       authorId: user.id,
       tags: {
         create: toPostTagCreate(parsed.value.tagNames),

@@ -239,3 +239,31 @@ Next.js App Router에서 `useSearchParams()`를 사용하는 클라이언트 컴
 ### 해결 방법
 
 `useSearchParams()` 의존성을 제거하고, 클라이언트 lazy state 초기화에서 `window.location.search`를 읽도록 변경했다. 이후 `npm run build`가 성공했다.
+
+## 18. Prisma Client 재생성 후 dev 서버 미재시작
+
+### 문제 정의
+
+Issue #20 작업 중 `Post.status`, `Post.visibility`, `User.blogTitle`, `User.intro`를 사용하는 페이지가 `npm run build`에서는 통과했지만, 이미 실행 중이던 `npm run dev` 서버에서 `/jinho` 접근 시 500 오류가 발생했다.
+
+### 발생 원인
+
+dev 서버가 이전 Prisma Client 모듈을 메모리에 들고 있었다. `npm run prisma:generate`로 파일은 갱신됐지만, 실행 중인 Next.js dev 프로세스는 새 Prisma Client 타입/런타임을 다시 로드하지 않아 `blogTitle`, `intro` 같은 필드를 알 수 없었다.
+
+### 해결 방법
+
+Prisma 스키마와 generated client를 변경한 뒤에는 dev 서버를 재시작한다. 이번 작업에서는 기존 `npm run dev` 프로세스를 중지한 뒤 새로 실행해 변경된 Prisma Client가 로드되도록 처리했다.
+
+## 19. MySQL 이미지 pull 지연으로 DB 연동 수동 검증 차단
+
+### 문제 정의
+
+Issue #20의 게시글 작성/수정/상세/댓글 수동 검증을 위해 Docker Desktop을 실행하고 `docker compose up -d mysql`을 재시도했지만, `mysql:8.4` 이미지 pull 단계에서 장시간 결과가 나오지 않았고 컨테이너가 생성되지 않았다.
+
+### 발생 원인
+
+Docker 데몬은 정상 실행됐지만 로컬에 `mysql:8.4` 이미지가 없었고, Docker Hub 이미지 다운로드가 현재 네트워크 상태에서 진행되지 않았다. `docker compose ps`와 `docker image ls mysql` 확인 결과 MySQL 컨테이너와 이미지가 모두 없는 상태였다.
+
+### 해결 방법
+
+장시간 대기를 피하기 위해 pull 명령을 중단했다. 코드 레벨 검증은 `prisma validate`, `prisma generate`, `format:check`, `lint`, `test`, `build`로 완료한다. 게시글 작성/수정/상세/댓글의 실제 DB 연동 수동 검증은 `mysql:8.4` 이미지를 받을 수 있는 네트워크에서 `docker compose up -d mysql`, `npm run prisma:migrate`를 실행한 뒤 진행해야 한다.

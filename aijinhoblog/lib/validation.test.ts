@@ -77,7 +77,28 @@ describe("validation", () => {
         title: "첫 글",
         excerpt: null,
         content: "본문은 최소 길이를 넘겨야 합니다.",
+        status: "PUBLISHED",
+        visibility: "PUBLIC",
         tagNames: ["ai", "blog"],
+      },
+    });
+
+    expect(
+      parsePostPayload({
+        title: "임시 글",
+        content: "짧음",
+        status: "DRAFT",
+        visibility: "PRIVATE",
+      }),
+    ).toEqual({
+      ok: true,
+      value: {
+        title: "임시 글",
+        excerpt: null,
+        content: "짧음",
+        status: "DRAFT",
+        visibility: "PRIVATE",
+        tagNames: [],
       },
     });
 

@@ -1,3 +1,11 @@
+import type { Prisma } from "@/lib/generated/prisma";
+import type { PostStatusInput, PostVisibilityInput } from "@/lib/validation";
+
+export const POST_PAGE_SIZE = 6;
+export const RECENT_POST_LIMIT = 5;
+
+export type PostListSort = "latest" | "oldest";
+
 export const postSummaryInclude = {
   author: {
     select: {
@@ -65,6 +73,9 @@ type PostRecord = {
   title: string;
   excerpt: string | null;
   content: string;
+  status: PostStatusInput;
+  visibility: PostVisibilityInput;
+  publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   author: AuthorRecord;
@@ -74,6 +85,54 @@ type PostRecord = {
   };
   comments?: CommentRecord[];
 };
+
+export function normalizePostSort(value: string | null): PostListSort {
+  return value === "oldest" ? "oldest" : "latest";
+}
+
+export function createPostSummary(excerpt: string | null, content: string, maxLength = 120) {
+  const source = (excerpt || content).replace(/\s+/g, " ").trim();
+
+  if (source.length <= maxLength) {
+    return source;
+  }
+
+  return `${source.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+export function createPostAccessWhere(authorId: string, currentUserId?: string | null) {
+  const where: Prisma.PostWhereInput = {
+    authorId,
+  };
+
+  if (currentUserId !== authorId) {
+    where.status = "PUBLISHED";
+    where.visibility = "PUBLIC";
+  }
+
+  return where;
+}
+
+export function canReadPost(
+  post: {
+    authorId: string;
+    status: PostStatusInput;
+    visibility: PostVisibilityInput;
+  },
+  currentUserId?: string | null,
+) {
+  return (
+    currentUserId === post.authorId || (post.status === "PUBLISHED" && post.visibility === "PUBLIC")
+  );
+}
+
+export function resolvePublishedAt(
+  status: PostStatusInput,
+  existingPublishedAt?: Date | null,
+  now = new Date(),
+) {
+  return status === "PUBLISHED" ? (existingPublishedAt ?? now) : null;
+}
 
 export function serializeComment(comment: CommentRecord) {
   return {
@@ -90,7 +149,11 @@ export function serializePost(post: PostRecord) {
     id: post.id,
     title: post.title,
     excerpt: post.excerpt,
+    summary: createPostSummary(post.excerpt, post.content),
     content: post.content,
+    status: post.status,
+    visibility: post.visibility,
+    publishedAt: post.publishedAt?.toISOString() ?? null,
     author: post.author,
     tags: post.tags.map(({ tag }) => tag),
     commentCount: post._count?.comments ?? post.comments?.length ?? 0,

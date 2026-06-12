@@ -4,8 +4,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
+import {
+  createPostAccessWhere,
+  createPostSummary,
+  normalizePostSort,
+  POST_PAGE_SIZE,
+} from "@/lib/posts";
 import { profileSelect, serializeProfile } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
+import { parsePositiveInt } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +20,22 @@ type Props = {
   params: Promise<{
     username: string;
   }>;
+  searchParams?: Promise<{
+    page?: string;
+    sort?: string;
+  }>;
 };
+
+function createPageHref(username: string, page: number, sort: string) {
+  return `/${username}?page=${page}&sort=${sort}`;
+}
+
+function createPageNumbers(currentPage: number, totalPages: number) {
+  const start = Math.max(1, currentPage - 2);
+  const end = Math.min(totalPages, start + 4);
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
@@ -33,30 +55,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function UserBlogPage({ params }: Props) {
+export default async function UserBlogPage({ params, searchParams }: Props) {
   const { username } = await params;
+  const query = (await searchParams) ?? {};
+  const requestedPage = parsePositiveInt(query.page ?? null, 1, {
+    min: 1,
+    max: 1000,
+  });
+  const sort = normalizePostSort(query.sort ?? null);
   const [currentUser, blog] = await Promise.all([
     getCurrentUser(),
     prisma.user.findUnique({
       where: {
         username,
       },
-      select: {
-        ...profileSelect,
-        posts: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          select: {
-            id: true,
-            title: true,
-            excerpt: true,
-            content: true,
-            createdAt: true,
-          },
-          take: 10,
-        },
-      },
+      select: profileSelect,
     }),
   ]);
 
@@ -66,6 +79,28 @@ export default async function UserBlogPage({ params }: Props) {
 
   const isOwner = currentUser?.id === blog.id;
   const profile = serializeProfile(blog);
+  const where = createPostAccessWhere(blog.id, currentUser?.id);
+  const total = await prisma.post.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / POST_PAGE_SIZE));
+  const page = Math.min(requestedPage, totalPages);
+  const posts = await prisma.post.findMany({
+    where,
+    orderBy: {
+      createdAt: sort === "oldest" ? "asc" : "desc",
+    },
+    select: {
+      id: true,
+      title: true,
+      excerpt: true,
+      content: true,
+      status: true,
+      visibility: true,
+      createdAt: true,
+    },
+    skip: (page - 1) * POST_PAGE_SIZE,
+    take: POST_PAGE_SIZE,
+  });
+  const pageNumbers = createPageNumbers(page, totalPages);
 
   return (
     <main className="min-h-screen bg-[#f8f7f4] px-5 py-8 text-zinc-950">
@@ -129,17 +164,50 @@ export default async function UserBlogPage({ params }: Props) {
           </aside>
 
           <section className="border border-zinc-300 bg-white p-6">
+            <div className="mb-5 flex flex-col gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">글 목록</h2>
+                <p className="mt-1 text-sm text-zinc-500">총 {total}개</p>
+              </div>
+              <div className="inline-flex w-fit border border-zinc-300 text-sm">
+                <Link
+                  className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                  href={createPageHref(profile.username, 1, "latest")}
+                >
+                  최신순
+                </Link>
+                <Link
+                  className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                  href={createPageHref(profile.username, 1, "oldest")}
+                >
+                  오래된순
+                </Link>
+              </div>
+            </div>
+
             <div className="space-y-4">
-              {blog.posts.length ? (
-                blog.posts.map((post) => (
+              {posts.length ? (
+                posts.map((post) => (
                   <Link
                     className="block border border-zinc-300 px-5 py-4 hover:bg-zinc-50"
                     href={`/${profile.username}/posts/${post.id}`}
                     key={post.id}
                   >
-                    <h2 className="text-lg font-semibold">{post.title}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold">{post.title}</h3>
+                      {isOwner && post.status === "DRAFT" ? (
+                        <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                          임시저장
+                        </span>
+                      ) : null}
+                      {isOwner && post.visibility === "PRIVATE" ? (
+                        <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
+                          비공개
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600">
-                      {post.excerpt || post.content}
+                      {createPostSummary(post.excerpt, post.content)}
                     </p>
                     <p className="mt-3 text-xs text-zinc-500">
                       {post.createdAt.toLocaleDateString("ko-KR")}
@@ -152,6 +220,34 @@ export default async function UserBlogPage({ params }: Props) {
                 </div>
               )}
             </div>
+
+            {totalPages > 1 ? (
+              <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
+                <Link
+                  aria-disabled={page <= 1}
+                  className={`border border-zinc-300 px-3 py-2 ${page <= 1 ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
+                  href={createPageHref(profile.username, Math.max(1, page - 1), sort)}
+                >
+                  이전
+                </Link>
+                {pageNumbers.map((pageNumber) => (
+                  <Link
+                    className={`border border-zinc-300 px-3 py-2 ${pageNumber === page ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                    href={createPageHref(profile.username, pageNumber, sort)}
+                    key={pageNumber}
+                  >
+                    {pageNumber}
+                  </Link>
+                ))}
+                <Link
+                  aria-disabled={page >= totalPages}
+                  className={`border border-zinc-300 px-3 py-2 ${page >= totalPages ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
+                  href={createPageHref(profile.username, Math.min(totalPages, page + 1), sort)}
+                >
+                  다음
+                </Link>
+              </nav>
+            ) : null}
           </section>
         </div>
       </div>
