@@ -3,15 +3,8 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
 } from "@/backend/auth";
-import { resolvePostFolderId } from "@/backend/folders";
 import { fail, json, readJson } from "@/backend/http";
-import {
-  postDetailInclude,
-  resolvePublishedAt,
-  serializePost,
-  toPostTagCreate,
-} from "@/backend/posts";
-import { prisma } from "@/backend/prisma";
+import { deleteOwnerPost, PostServiceError, updateOwnerPost } from "@/backend/posts";
 import { parsePostPayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
@@ -38,58 +31,18 @@ export async function PATCH(request: Request, { params }: Params) {
     return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
-  const post = await prisma.post.findUnique({
-    where: {
-      id: postId,
-    },
-    select: {
-      authorId: true,
-      publishedAt: true,
-    },
-  });
+  try {
+    const post = await updateOwnerPost(user.id, postId, parsed.value);
+    const response = json({ post });
 
-  if (!post) {
-    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
+    return attachRefreshedSessionCookie(response, auth);
+  } catch (error) {
+    if (error instanceof PostServiceError) {
+      return failWithRefreshedSession(error.message, auth, error.status);
+    }
+
+    return failWithRefreshedSession("게시글 수정에 실패했습니다.", auth, 500);
   }
-
-  if (post.authorId !== user.id) {
-    return failWithRefreshedSession("게시글 작성자만 수정할 수 있습니다.", auth, 403);
-  }
-
-  const folder = await resolvePostFolderId(user.id, parsed.value.folderId);
-
-  if (!folder.ok) {
-    return failWithRefreshedSession(folder.error, auth, 404);
-  }
-
-  const [, updatedPost] = await prisma.$transaction([
-    prisma.postTag.deleteMany({
-      where: {
-        postId,
-      },
-    }),
-    prisma.post.update({
-      where: {
-        id: postId,
-      },
-      data: {
-        title: parsed.value.title,
-        excerpt: parsed.value.excerpt,
-        content: parsed.value.content,
-        status: parsed.value.status,
-        visibility: parsed.value.visibility,
-        publishedAt: resolvePublishedAt(parsed.value.status, post.publishedAt),
-        folderId: folder.folderId,
-        tags: {
-          create: toPostTagCreate(parsed.value.tagNames),
-        },
-      },
-      include: postDetailInclude,
-    }),
-  ]);
-  const response = json({ post: serializePost(updatedPost) });
-
-  return attachRefreshedSessionCookie(response, auth);
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
@@ -101,29 +54,16 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   const { postId } = await params;
-  const post = await prisma.post.findUnique({
-    where: {
-      id: postId,
-    },
-    select: {
-      authorId: true,
-    },
-  });
+  try {
+    const result = await deleteOwnerPost(user.id, postId);
+    const response = json(result);
 
-  if (!post) {
-    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
+    return attachRefreshedSessionCookie(response, auth);
+  } catch (error) {
+    if (error instanceof PostServiceError) {
+      return failWithRefreshedSession(error.message, auth, error.status);
+    }
+
+    return failWithRefreshedSession("게시글 삭제에 실패했습니다.", auth, 500);
   }
-
-  if (post.authorId !== user.id) {
-    return failWithRefreshedSession("게시글 작성자만 삭제할 수 있습니다.", auth, 403);
-  }
-
-  await prisma.post.delete({
-    where: {
-      id: postId,
-    },
-  });
-  const response = json({ ok: true });
-
-  return attachRefreshedSessionCookie(response, auth);
 }

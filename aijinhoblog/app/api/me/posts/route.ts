@@ -3,15 +3,8 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
 } from "@/backend/auth";
-import { resolvePostFolderId } from "@/backend/folders";
 import { fail, json, readJson } from "@/backend/http";
-import {
-  postSummaryInclude,
-  resolvePublishedAt,
-  serializePost,
-  toPostTagCreate,
-} from "@/backend/posts";
-import { prisma } from "@/backend/prisma";
+import { createOwnerPost, PostServiceError } from "@/backend/posts";
 import { parsePostPayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
@@ -31,29 +24,16 @@ export async function POST(request: Request) {
     return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
-  const folder = await resolvePostFolderId(user.id, parsed.value.folderId);
+  try {
+    const post = await createOwnerPost(user.id, parsed.value);
+    const response = json({ post }, 201);
 
-  if (!folder.ok) {
-    return failWithRefreshedSession(folder.error, auth, 404);
+    return attachRefreshedSessionCookie(response, auth);
+  } catch (error) {
+    if (error instanceof PostServiceError) {
+      return failWithRefreshedSession(error.message, auth, error.status);
+    }
+
+    return failWithRefreshedSession("게시글 저장에 실패했습니다.", auth, 500);
   }
-
-  const post = await prisma.post.create({
-    data: {
-      title: parsed.value.title,
-      excerpt: parsed.value.excerpt,
-      content: parsed.value.content,
-      status: parsed.value.status,
-      visibility: parsed.value.visibility,
-      publishedAt: resolvePublishedAt(parsed.value.status),
-      authorId: user.id,
-      folderId: folder.folderId,
-      tags: {
-        create: toPostTagCreate(parsed.value.tagNames),
-      },
-    },
-    include: postSummaryInclude,
-  });
-  const response = json({ post: serializePost(post) }, 201);
-
-  return attachRefreshedSessionCookie(response, auth);
 }

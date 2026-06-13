@@ -108,6 +108,30 @@ Phase 4 이후에는 `/{username}/memory`에서 게시글 chunk와 Dropbox Markd
 
 글쓰기 화면에서는 게시 전 유사 자료를 확인할 수 있습니다. 유사한 게시글이나 Dropbox Markdown 문서가 있으면 후보를 먼저 보여주고, 사용자는 확인 후 그대로 게시할 수 있습니다.
 
+## MCP 서버
+
+Phase 5 이후에는 stdio 기반 자체 MCP 서버를 실행할 수 있습니다.
+
+```bash
+npm --prefix aijinhoblog run mcp:server
+```
+
+MCP owner는 tool 입력의 `ownerUsername`, `ownerEmail`, `ownerId`로 지정하거나 아래 환경 변수 중 하나로 지정합니다.
+
+- `AIJINHOBLOG_MCP_OWNER_USERNAME`
+- `AIJINHOBLOG_MCP_OWNER_EMAIL`
+- `AIJINHOBLOG_MCP_OWNER_ID`
+
+제공 tool:
+
+- `blog_list_posts`
+- `blog_get_post`
+- `blog_create_post`
+- `blog_update_post`
+- `blog_delete_post`
+- `blog_create_draft_from_link`
+- `blog_create_draft_from_image`
+
 ## 환경 변수
 
 환경 변수는 루트 `.env` 하나만 사용합니다.
