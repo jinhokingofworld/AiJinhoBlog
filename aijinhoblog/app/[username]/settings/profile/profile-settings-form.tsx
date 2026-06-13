@@ -94,17 +94,25 @@ export function ProfileSettingsForm({ initialProfile }: { initialProfile: Profil
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-teal-700">AiJinhoBlog</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-normal">프로필 설정</h1>
         </div>
-        <Link
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100"
-          href={`/${profile.username}`}
-        >
-          블로그 홈
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            className="rounded-md border border-zinc-300 px-3 py-2 text-center text-sm font-medium hover:bg-zinc-100"
+            href={`/${profile.username}/settings`}
+          >
+            블로그 설정
+          </Link>
+          <Link
+            className="rounded-md border border-zinc-300 px-3 py-2 text-center text-sm font-medium hover:bg-zinc-100"
+            href={`/${profile.username}`}
+          >
+            블로그 홈
+          </Link>
+        </div>
       </div>
 
       {message ? (

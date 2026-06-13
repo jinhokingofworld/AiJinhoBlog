@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -218,7 +219,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               </h1>
             </div>
 
-            <details className="group relative shrink-0">
+            <details className="group relative shrink-0 lg:hidden">
               <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center border border-zinc-300 bg-white hover:bg-zinc-50 [&::-webkit-details-marker]:hidden">
                 <span className="sr-only">블로그 메뉴 열기</span>
                 <span className="flex w-5 flex-col gap-1">
@@ -239,10 +240,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     <Link className={menuLinkClass} href={`/${profile.username}/posts/new`}>
                       글쓰기
                     </Link>
-                    <Link className={menuLinkClass} href={`/${profile.username}/settings/profile`}>
-                      프로필 설정
-                    </Link>
-                    <Link className={menuLinkClass} href={`/${profile.username}/settings/folders`}>
+                    <Link className={menuLinkClass} href={`/${profile.username}/settings`}>
                       블로그 설정
                     </Link>
                   </>
@@ -276,255 +274,319 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
           </div>
         </header>
 
-        <section className="mt-3 border border-zinc-300 bg-white px-4 py-5 sm:px-6">
-          <p className="text-sm font-semibold text-zinc-500">블로그 소개</p>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">{profile.name}</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">{profile.intro}</p>
-            </div>
+        <div className="mt-3 lg:mt-8 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-3">
+          <aside className="hidden lg:block">
+            <section className="border border-zinc-300 bg-white p-4">
+              <Image
+                alt={`${profile.name} 프로필 이미지`}
+                className="aspect-square w-full border border-zinc-300 bg-zinc-50 object-cover"
+                height={226}
+                src={profile.profileImageUrl}
+                width={226}
+              />
+              <h2 className="mt-4 text-lg font-semibold">{profile.name}</h2>
+              <p className="mt-3 text-sm leading-6 text-zinc-600">{profile.intro}</p>
+            </section>
+
+            <section className="mt-3 min-h-[300px] border border-zinc-950 bg-white p-2">
+              <details className="relative">
+                <summary className="flex cursor-pointer list-none items-center justify-between border border-zinc-300 px-3 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                  <span>폴더</span>
+                  <span className="min-w-0 truncate font-normal text-zinc-600">
+                    {selectedFolderLabel}
+                  </span>
+                </summary>
+                <div className="absolute left-0 right-0 z-10 mt-1 max-h-64 overflow-auto border border-zinc-300 bg-white shadow-sm">
+                  <Link
+                    className={`block px-3 py-3 text-sm ${selectedFolderId ? "hover:bg-zinc-50" : "bg-zinc-950 text-white"}`}
+                    href={createPageHref(profile.username, {
+                      page: 1,
+                      query: searchQuery,
+                      sort,
+                    })}
+                  >
+                    전체
+                  </Link>
+                  {folders.map((folder) => (
+                    <Link
+                      className={`block border-t border-zinc-300 px-3 py-3 text-sm ${selectedFolderId === folder.id ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                      href={createPageHref(profile.username, {
+                        folderId: folder.id,
+                        page: 1,
+                        query: searchQuery,
+                        sort,
+                      })}
+                      key={folder.id}
+                    >
+                      {folder.name}
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            </section>
+
             {isOwner ? (
               <Link
-                className="w-full shrink-0 border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:w-auto"
-                href={`/${profile.username}/posts/new`}
+                className="mt-7 block border border-zinc-300 bg-white px-3 py-2 text-center text-base font-semibold hover:bg-zinc-100"
+                href={`/${profile.username}/settings`}
               >
-                글쓰기
+                블로그 설정
               </Link>
             ) : null}
-          </div>
-        </section>
+          </aside>
 
-        <section className="mt-3 border border-zinc-300 bg-white p-4 sm:p-5">
-          <div className="grid gap-3">
-            <details className="relative">
-              <summary className="flex cursor-pointer list-none items-center justify-between border border-zinc-300 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                <span>폴더</span>
-                <span className="min-w-0 truncate font-normal text-zinc-600">
-                  {selectedFolderLabel}
-                </span>
-              </summary>
-              <div className="absolute left-0 right-0 z-10 mt-1 max-h-64 overflow-auto border border-zinc-300 bg-white shadow-sm">
-                <Link
-                  className={`block px-4 py-3 text-sm ${selectedFolderId ? "hover:bg-zinc-50" : "bg-zinc-950 text-white"}`}
-                  href={createPageHref(profile.username, {
-                    page: 1,
-                    query: searchQuery,
-                    sort,
-                  })}
-                >
-                  전체
-                </Link>
-                {folders.map((folder) => (
+          <div className="min-w-0">
+            <section className="border border-zinc-300 bg-white px-4 py-5 sm:px-6 lg:hidden">
+              <p className="text-sm font-semibold text-zinc-500">블로그 소개</p>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">{profile.name}</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">{profile.intro}</p>
+                </div>
+                {isOwner ? (
                   <Link
-                    className={`block px-4 py-3 text-sm ${selectedFolderId === folder.id ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                    href={createPageHref(profile.username, {
-                      folderId: folder.id,
-                      page: 1,
-                      query: searchQuery,
-                      sort,
-                    })}
-                    key={folder.id}
+                    className="w-full shrink-0 border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:w-auto"
+                    href={`/${profile.username}/posts/new`}
                   >
-                    {folder.name}
-                  </Link>
-                ))}
-              </div>
-            </details>
-          </div>
-        </section>
-
-        <section className="mt-3 border border-zinc-300 bg-white p-4 sm:p-6">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-4 border-b border-zinc-200 pb-4 sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:items-center">
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold">글 목록</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                총 {total}개{hasActiveFilters ? " · 필터 적용 중" : ""}
-              </p>
-            </div>
-
-            <div className="contents sm:flex sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-              <form
-                action={`/${profile.username}`}
-                className="order-3 col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] justify-start gap-x-[5px] gap-y-2 sm:order-1 sm:col-span-1 sm:w-auto sm:grid-cols-[16rem_auto_auto] md:grid-cols-[18rem_auto_auto] lg:order-2 lg:grid-cols-[20rem_auto_auto]"
-                method="get"
-              >
-                <input name="sort" type="hidden" value={sort} />
-                {selectedFolderId ? (
-                  <input name="folderId" type="hidden" value={selectedFolderId} />
-                ) : null}
-                <label className="sr-only" htmlFor="post-search">
-                  글 검색
-                </label>
-                <input
-                  className="h-10 min-w-0 border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-950"
-                  defaultValue={searchQuery ?? ""}
-                  id="post-search"
-                  name="query"
-                  placeholder="제목, 요약, #태그 검색"
-                  type="search"
-                />
-                <button
-                  className="h-10 shrink-0 border border-zinc-300 px-4 text-sm font-medium hover:bg-zinc-100"
-                  type="submit"
-                >
-                  검색
-                </button>
-                {searchQuery ? (
-                  <Link
-                    className="col-span-2 h-10 border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:col-span-1"
-                    href={createPageHref(profile.username, {
-                      folderId: selectedFolderId,
-                      page: 1,
-                      sort,
-                    })}
-                  >
-                    초기화
+                    글쓰기
                   </Link>
                 ) : null}
-              </form>
-              <div className="order-2 inline-flex w-fit justify-self-end border border-zinc-300 text-sm sm:order-2 lg:order-1">
-                <Link
-                  className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, {
-                    folderId: selectedFolderId,
-                    page: 1,
-                    query: searchQuery,
-                    sort: "latest",
-                  })}
-                >
-                  최신순
-                </Link>
-                <Link
-                  className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, {
-                    folderId: selectedFolderId,
-                    page: 1,
-                    query: searchQuery,
-                    sort: "oldest",
-                  })}
-                >
-                  오래된순
-                </Link>
               </div>
-            </div>
-          </div>
+            </section>
 
-          <div className="mt-5 space-y-3">
-            {posts.length ? (
-              posts.map((post) => (
-                <Link
-                  className="flex min-h-28 flex-col border border-zinc-300 px-4 py-4 hover:bg-zinc-50 sm:px-5"
-                  href={`/${profile.username}/posts/${post.id}`}
-                  key={post.id}
-                >
-                  <div className="flex min-w-0 items-start gap-2">
-                    <h3
-                      className="min-w-0 flex-1 truncate text-lg font-semibold"
-                      title={post.title}
+            <section className="mt-3 border border-zinc-300 bg-white p-4 sm:p-5 lg:hidden">
+              <div className="grid gap-3">
+                <details className="relative">
+                  <summary className="flex cursor-pointer list-none items-center justify-between border border-zinc-300 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                    <span>폴더</span>
+                    <span className="min-w-0 truncate font-normal text-zinc-600">
+                      {selectedFolderLabel}
+                    </span>
+                  </summary>
+                  <div className="absolute left-0 right-0 z-10 mt-1 max-h-64 overflow-auto border border-zinc-300 bg-white shadow-sm">
+                    <Link
+                      className={`block px-4 py-3 text-sm ${selectedFolderId ? "hover:bg-zinc-50" : "bg-zinc-950 text-white"}`}
+                      href={createPageHref(profile.username, {
+                        page: 1,
+                        query: searchQuery,
+                        sort,
+                      })}
                     >
-                      {post.title}
-                    </h3>
-                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                      {isOwner && post.status === "DRAFT" ? (
-                        <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                          임시저장
-                        </span>
-                      ) : null}
-                      {isOwner && post.visibility === "PRIVATE" ? (
-                        <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
-                          비공개
-                        </span>
-                      ) : null}
-                    </div>
+                      전체
+                    </Link>
+                    {folders.map((folder) => (
+                      <Link
+                        className={`block px-4 py-3 text-sm ${selectedFolderId === folder.id ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                        href={createPageHref(profile.username, {
+                          folderId: folder.id,
+                          page: 1,
+                          query: searchQuery,
+                          sort,
+                        })}
+                        key={folder.id}
+                      >
+                        {folder.name}
+                      </Link>
+                    ))}
                   </div>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600">
-                    {createPostSummary(post.excerpt, post.content)}
-                  </p>
-                  <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-3">
-                    <p className="text-xs text-zinc-500">
-                      {post.createdAt.toLocaleDateString("ko-KR")}
-                      {post.folder ? ` · ${post.folder.name}` : ""}
-                    </p>
-                    {post.tags.length ? (
-                      <div className="ml-auto flex flex-wrap justify-end gap-1">
-                        {post.tags.map(({ tag }) => (
-                          <span
-                            className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700"
-                            key={tag.id}
-                          >
-                            #{tag.name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="border border-dashed border-zinc-300 px-5 py-12 text-center text-sm text-zinc-500">
-                {hasActiveFilters ? "조건에 맞는 글이 없습니다." : "아직 공개된 글이 없습니다."}
+                </details>
               </div>
-            )}
-          </div>
+            </section>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              {isOwner ? (
-                <Link
-                  className="block border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:w-40"
-                  href={`/${profile.username}/posts/new`}
-                >
-                  글쓰기
-                </Link>
-              ) : null}
-            </div>
-            {totalPages > 1 ? (
-              <nav className="flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-end">
-                <Link
-                  aria-label="이전 페이지"
-                  aria-disabled={page <= 1}
-                  className={`border border-zinc-300 px-3 py-2 ${page <= 1 ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, {
-                    folderId: selectedFolderId,
-                    page: Math.max(1, page - 1),
-                    query: searchQuery,
-                    sort,
-                  })}
-                >
-                  &lt;
-                </Link>
-                {pageNumbers.map((pageNumber) => (
-                  <Link
-                    aria-current={pageNumber === page ? "page" : undefined}
-                    className={`border border-zinc-300 px-3 py-2 ${pageNumber === page ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                    href={createPageHref(profile.username, {
-                      folderId: selectedFolderId,
-                      page: pageNumber,
-                      query: searchQuery,
-                      sort,
-                    })}
-                    key={pageNumber}
+            <section className="mt-3 border border-zinc-300 bg-white p-4 sm:p-6 lg:mt-0">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-4 border-b border-zinc-200 pb-4 sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:items-center">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold">글 목록</h2>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    총 {total}개{hasActiveFilters ? " · 필터 적용 중" : ""}
+                  </p>
+                </div>
+
+                <div className="contents sm:flex sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+                  <form
+                    action={`/${profile.username}`}
+                    className="order-3 col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] justify-start gap-x-[5px] gap-y-2 sm:order-1 sm:col-span-1 sm:w-auto sm:grid-cols-[16rem_auto_auto] md:grid-cols-[18rem_auto_auto] lg:order-2 lg:grid-cols-[20rem_auto_auto]"
+                    method="get"
                   >
-                    {pageNumber}
-                  </Link>
-                ))}
-                <Link
-                  aria-label="다음 페이지"
-                  aria-disabled={page >= totalPages}
-                  className={`border border-zinc-300 px-3 py-2 ${page >= totalPages ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, {
-                    folderId: selectedFolderId,
-                    page: Math.min(totalPages, page + 1),
-                    query: searchQuery,
-                    sort,
-                  })}
-                >
-                  &gt;
-                </Link>
-              </nav>
-            ) : null}
+                    <input name="sort" type="hidden" value={sort} />
+                    {selectedFolderId ? (
+                      <input name="folderId" type="hidden" value={selectedFolderId} />
+                    ) : null}
+                    <label className="sr-only" htmlFor="post-search">
+                      글 검색
+                    </label>
+                    <input
+                      className="h-10 min-w-0 border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-950"
+                      defaultValue={searchQuery ?? ""}
+                      id="post-search"
+                      name="query"
+                      placeholder="제목, 요약, #태그 검색"
+                      type="search"
+                    />
+                    <button
+                      className="h-10 shrink-0 border border-zinc-300 px-4 text-sm font-medium hover:bg-zinc-100"
+                      type="submit"
+                    >
+                      검색
+                    </button>
+                    {searchQuery ? (
+                      <Link
+                        className="col-span-2 h-10 border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:col-span-1"
+                        href={createPageHref(profile.username, {
+                          folderId: selectedFolderId,
+                          page: 1,
+                          sort,
+                        })}
+                      >
+                        초기화
+                      </Link>
+                    ) : null}
+                  </form>
+                  <div className="order-2 inline-flex w-fit justify-self-end border border-zinc-300 text-sm sm:order-2 lg:order-1">
+                    <Link
+                      className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                      href={createPageHref(profile.username, {
+                        folderId: selectedFolderId,
+                        page: 1,
+                        query: searchQuery,
+                        sort: "latest",
+                      })}
+                    >
+                      최신순
+                    </Link>
+                    <Link
+                      className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                      href={createPageHref(profile.username, {
+                        folderId: selectedFolderId,
+                        page: 1,
+                        query: searchQuery,
+                        sort: "oldest",
+                      })}
+                    >
+                      오래된순
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {posts.length ? (
+                  posts.map((post) => (
+                    <Link
+                      className="flex min-h-28 flex-col border border-zinc-300 px-4 py-4 hover:bg-zinc-50 sm:px-5"
+                      href={`/${profile.username}/posts/${post.id}`}
+                      key={post.id}
+                    >
+                      <div className="flex min-w-0 items-start gap-2">
+                        <h3
+                          className="min-w-0 flex-1 truncate text-lg font-semibold"
+                          title={post.title}
+                        >
+                          {post.title}
+                        </h3>
+                        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                          {isOwner && post.status === "DRAFT" ? (
+                            <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                              임시저장
+                            </span>
+                          ) : null}
+                          {isOwner && post.visibility === "PRIVATE" ? (
+                            <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
+                              비공개
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600">
+                        {createPostSummary(post.excerpt, post.content)}
+                      </p>
+                      <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-3">
+                        <p className="text-xs text-zinc-500">
+                          {post.createdAt.toLocaleDateString("ko-KR")}
+                          {post.folder ? ` · ${post.folder.name}` : ""}
+                        </p>
+                        {post.tags.length ? (
+                          <div className="ml-auto flex flex-wrap justify-end gap-1">
+                            {post.tags.map(({ tag }) => (
+                              <span
+                                className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700"
+                                key={tag.id}
+                              >
+                                #{tag.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="border border-dashed border-zinc-300 px-5 py-12 text-center text-sm text-zinc-500">
+                    {hasActiveFilters ? "조건에 맞는 글이 없습니다." : "아직 공개된 글이 없습니다."}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  {isOwner ? (
+                    <Link
+                      className="block border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:w-40"
+                      href={`/${profile.username}/posts/new`}
+                    >
+                      글쓰기
+                    </Link>
+                  ) : null}
+                </div>
+                {totalPages > 1 ? (
+                  <nav className="flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-end">
+                    <Link
+                      aria-label="이전 페이지"
+                      aria-disabled={page <= 1}
+                      className={`border border-zinc-300 px-3 py-2 ${page <= 1 ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
+                      href={createPageHref(profile.username, {
+                        folderId: selectedFolderId,
+                        page: Math.max(1, page - 1),
+                        query: searchQuery,
+                        sort,
+                      })}
+                    >
+                      &lt;
+                    </Link>
+                    {pageNumbers.map((pageNumber) => (
+                      <Link
+                        aria-current={pageNumber === page ? "page" : undefined}
+                        className={`border border-zinc-300 px-3 py-2 ${pageNumber === page ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                        href={createPageHref(profile.username, {
+                          folderId: selectedFolderId,
+                          page: pageNumber,
+                          query: searchQuery,
+                          sort,
+                        })}
+                        key={pageNumber}
+                      >
+                        {pageNumber}
+                      </Link>
+                    ))}
+                    <Link
+                      aria-label="다음 페이지"
+                      aria-disabled={page >= totalPages}
+                      className={`border border-zinc-300 px-3 py-2 ${page >= totalPages ? "pointer-events-none text-zinc-300" : "hover:bg-zinc-50"}`}
+                      href={createPageHref(profile.username, {
+                        folderId: selectedFolderId,
+                        page: Math.min(totalPages, page + 1),
+                        query: searchQuery,
+                        sort,
+                      })}
+                    >
+                      &gt;
+                    </Link>
+                  </nav>
+                ) : null}
+              </div>
+            </section>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );
