@@ -37,6 +37,7 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `/{username}/posts/new`: 글쓰기, 소유자 전용
 - `/{username}/posts/{postId}`: 게시글 상세
 - `/{username}/posts/{postId}/edit`: 글 수정, 소유자 전용
+- `/{username}/agent`: 글감 추천, 문체 변환, 출판 리팩토링 Agent, 소유자 전용
 - `/{username}/settings/profile`: 프로필 설정, 소유자 전용
 - `/{username}/settings/folders`: 폴더 관리, 소유자 전용
 
@@ -63,6 +64,12 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `POST /api/me/rag/search`: 게시글과 Dropbox Markdown 통합 유사 검색
 - `POST /api/me/rag/answer`: 검색 근거 기반 내 기억 Q&A 답변 생성
 - `POST /api/me/rag/duplicates`: 게시글 발행 전 유사 자료 후보 확인
+- `GET /api/me/agent/insights`: 최근 글 기반 글감 추천과 주제 인사이트
+- `GET /api/me/agent/style-profile`: 사용자 문체 프로파일 조회
+- `POST /api/me/agent/style-profile`: 사용자 문체 프로파일 갱신
+- `POST /api/me/agent/rewrite`: 외부 텍스트를 사용자 문체로 재작성
+- `POST /api/me/agent/refactor`: 게시글 또는 입력 본문을 출판 품질로 리팩토링
+- `POST /api/me/agent/refactor/{resultId}/apply`: 리팩토링 결과를 원 게시글에 반영
 - `POST /api/posts/{postId}/comments`
 - `DELETE /api/comments/{commentId}`
 - `GET /api/me/folders`
@@ -107,6 +114,12 @@ npm --prefix aijinhoblog run dropbox:sync -- --username {username}
 Phase 4 이후에는 `/{username}/memory`에서 게시글 chunk와 Dropbox Markdown chunk를 함께 검색해 자연어 질문에 답할 수 있습니다. 답변에는 근거가 된 게시글 링크 또는 Dropbox 문서 경로가 함께 표시됩니다.
 
 글쓰기 화면에서는 게시 전 유사 자료를 확인할 수 있습니다. 유사한 게시글이나 Dropbox Markdown 문서가 있으면 후보를 먼저 보여주고, 사용자는 확인 후 그대로 게시할 수 있습니다.
+
+## 글쓰기 Agent
+
+Phase 6 이후에는 `/{username}/agent`에서 최근 글 기반 글감 추천, 사용자 문체 프로파일, 외부 텍스트 문체 변환, 기존 글의 출판 품질 리팩토링을 실행할 수 있습니다. 리팩토링 결과는 Before/After로 비교되며, 변경된 문장은 강조 표시되고 사용자가 원 게시글에 선택적으로 반영할 수 있습니다.
+
+문체 프로파일은 과거 게시글의 어조, 문장 길이, 자주 쓰는 표현을 저장하며 7일 이상 지난 프로파일은 문체 변환 시 자동 갱신됩니다.
 
 ## MCP 서버
 
