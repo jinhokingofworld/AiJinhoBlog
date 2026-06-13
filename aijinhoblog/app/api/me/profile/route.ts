@@ -1,8 +1,8 @@
-import { getCurrentUser } from "@/lib/auth";
-import { fail, json, readJson } from "@/lib/http";
-import { profileSelect, serializeProfile } from "@/lib/profile";
-import { prisma } from "@/lib/prisma";
-import { parseProfilePayload } from "@/lib/validation";
+import { getCurrentUser } from "@/backend/auth";
+import { fail, json, readJson } from "@/backend/http";
+import { profileSelect, serializeProfile } from "@/backend/profile";
+import { prisma } from "@/backend/prisma";
+import { parseProfilePayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
 

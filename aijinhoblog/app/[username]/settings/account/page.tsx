@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { PageFrame } from "@/app/_components/page-frame";
-import { getCurrentUser } from "@/lib/auth";
+import { PageFrame } from "@/frontend/components/page-frame";
+import { getCurrentUser } from "@/backend/auth";
 
 export const dynamic = "force-dynamic";
 

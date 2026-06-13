@@ -2,19 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { BlogHeroHeader, ProfileSummaryCard } from "@/app/_components/blog-components";
-import { PageFrame } from "@/app/_components/page-frame";
-import { CommentsPanel } from "@/app/[username]/posts/[postId]/comments-panel";
-import { getCurrentUser } from "@/lib/auth";
+import { BlogHeroHeader, ProfileSummaryCard } from "@/frontend/components/blog-components";
+import { PageFrame } from "@/frontend/components/page-frame";
+import { CommentsPanel } from "@/frontend/features/comments/comments-panel";
+import { getCurrentUser } from "@/backend/auth";
 import {
   canReadPost,
   createPostAccessWhere,
   createPostSummary,
   RECENT_POST_LIMIT,
   serializePost,
-} from "@/lib/posts";
-import { profileSelect, serializeProfile } from "@/lib/profile";
-import { prisma } from "@/lib/prisma";
+} from "@/backend/posts";
+import { profileSelect, serializeProfile } from "@/backend/profile";
+import { prisma } from "@/backend/prisma";
 
 export const dynamic = "force-dynamic";
 

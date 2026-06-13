@@ -54,8 +54,9 @@ AiJinhoBlog/
 
 ### 후속 기준
 
-- UI와 API Route는 `aijinhoblog/app` 아래에 둔다.
-- 공통 라이브러리는 `aijinhoblog/lib` 또는 `aijinhoblog/src` 중 하나로 통일한다.
+- `aijinhoblog/app`은 Next.js URL 라우트 엔트리포인트로 유지한다.
+- React UI와 client component는 `aijinhoblog/frontend` 아래에 둔다.
+- 인증, Prisma, 도메인 로직, API helper, 서버 액션은 `aijinhoblog/backend` 아래에 둔다.
 - Phase 1에서 Prisma를 도입할 때 `aijinhoblog/prisma/schema.prisma`를 기준으로 관리한다.
 
 ## 4. MySQL 접근 방식

@@ -1,8 +1,8 @@
-import { getCurrentUser } from "@/lib/auth";
-import { fail, json } from "@/lib/http";
-import { profileSelect, serializeProfile } from "@/lib/profile";
-import { prisma } from "@/lib/prisma";
-import { deleteLocalUpload, saveImageUpload } from "@/lib/uploads";
+import { getCurrentUser } from "@/backend/auth";
+import { fail, json } from "@/backend/http";
+import { profileSelect, serializeProfile } from "@/backend/profile";
+import { prisma } from "@/backend/prisma";
+import { deleteLocalUpload, saveImageUpload } from "@/backend/uploads";
 
 export const runtime = "nodejs";
 

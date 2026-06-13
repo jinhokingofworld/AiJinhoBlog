@@ -1,4 +1,4 @@
-import type { Prisma } from "@/lib/generated/prisma";
+import type { Prisma } from "@/backend/generated/prisma";
 
 import { loadEnvConfig } from "@next/env";
 
@@ -42,8 +42,8 @@ function sleep(ms: number) {
 
 async function main() {
   const [{ syncPostVectorIndex }, { prisma }] = await Promise.all([
-    import("@/lib/ai-indexing"),
-    import("@/lib/prisma"),
+    import("@/backend/ai-indexing"),
+    import("@/backend/prisma"),
   ]);
   const options = readCliOptions();
   const where: Prisma.PostWhereInput = options.includeIndexed
@@ -129,7 +129,7 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    const { prisma } = await import("@/lib/prisma");
+    const { prisma } = await import("@/backend/prisma");
 
     await prisma.$disconnect();
   });

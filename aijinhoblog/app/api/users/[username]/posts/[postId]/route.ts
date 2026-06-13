@@ -1,7 +1,7 @@
-import { getCurrentUser } from "@/lib/auth";
-import { fail, json } from "@/lib/http";
-import { canReadPost, postDetailInclude, serializePost } from "@/lib/posts";
-import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/backend/auth";
+import { fail, json } from "@/backend/http";
+import { canReadPost, postDetailInclude, serializePost } from "@/backend/posts";
+import { prisma } from "@/backend/prisma";
 
 export const runtime = "nodejs";
 

@@ -1,5 +1,5 @@
-import { clearSessionCookie, deleteCurrentSession } from "@/lib/auth";
-import { json } from "@/lib/http";
+import { clearSessionCookie, deleteCurrentSession } from "@/backend/auth";
+import { json } from "@/backend/http";
 
 export const runtime = "nodejs";
 

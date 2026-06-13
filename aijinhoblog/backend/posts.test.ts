@@ -10,7 +10,7 @@ import {
   normalizePostTagFilter,
   POST_PAGE_SIZE,
   resolvePublishedAt,
-} from "@/lib/posts";
+} from "@/backend/posts";
 
 describe("posts", () => {
   it("creates a fallback summary without calling AI features", () => {

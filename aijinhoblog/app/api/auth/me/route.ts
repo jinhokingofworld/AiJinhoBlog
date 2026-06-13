@@ -1,5 +1,5 @@
-import { attachSessionCookie, getCurrentUser, refreshUserSession } from "@/lib/auth";
-import { json } from "@/lib/http";
+import { attachSessionCookie, getCurrentUser, refreshUserSession } from "@/backend/auth";
+import { json } from "@/backend/http";
 
 export const runtime = "nodejs";
 

@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 
-import { PageFrame } from "@/app/_components/page-frame";
-import { PostForm } from "@/app/[username]/posts/post-form";
-import { getCurrentUser } from "@/lib/auth";
-import { ensureDefaultFolder, listFolders } from "@/lib/folders";
-import { prisma } from "@/lib/prisma";
+import { PageFrame } from "@/frontend/components/page-frame";
+import { PostForm } from "@/frontend/features/posts/post-form";
+import { getCurrentUser } from "@/backend/auth";
+import { ensureDefaultFolder, listFolders } from "@/backend/folders";
+import { prisma } from "@/backend/prisma";
 
 type Props = {
   params: Promise<{

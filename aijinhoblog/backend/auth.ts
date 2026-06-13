@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { createJwt, createSessionToken, hashSessionToken, verifyJwt } from "@/lib/auth-crypto";
-import { prisma } from "@/lib/prisma";
+import { createJwt, createSessionToken, hashSessionToken, verifyJwt } from "@/backend/auth-crypto";
+import { prisma } from "@/backend/prisma";
 
 export const ACCESS_TOKEN_COOKIE = "aij_access";
 export const REFRESH_TOKEN_COOKIE = "aij_refresh";

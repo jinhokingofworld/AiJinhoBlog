@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, deleteCurrentSession } from "@/lib/auth";
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, deleteCurrentSession } from "@/backend/auth";
 
 export async function logoutAction() {
   await deleteCurrentSession();

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { cx } from "@/app/_components/page-frame";
+import { cx } from "@/frontend/components/page-frame";
 
 export type BlogProfileView = {
   username: string;

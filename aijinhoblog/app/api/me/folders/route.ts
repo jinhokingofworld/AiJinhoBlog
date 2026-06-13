@@ -1,7 +1,7 @@
-import { getCurrentUser } from "@/lib/auth";
-import { createFolder, ensureDefaultFolder, listFolders, serializeFolder } from "@/lib/folders";
-import { fail, json, readJson } from "@/lib/http";
-import { parseFolderPayload } from "@/lib/validation";
+import { getCurrentUser } from "@/backend/auth";
+import { createFolder, ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/folders";
+import { fail, json, readJson } from "@/backend/http";
+import { parseFolderPayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
 

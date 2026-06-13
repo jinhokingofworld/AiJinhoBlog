@@ -1,9 +1,9 @@
-import { attachSessionCookie, createUserSession } from "@/lib/auth";
-import { verifyPassword } from "@/lib/auth-crypto";
-import { ensureDefaultBlogContent } from "@/lib/folders";
-import { fail, json, readJson } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
-import { parseCredentials } from "@/lib/validation";
+import { attachSessionCookie, createUserSession } from "@/backend/auth";
+import { verifyPassword } from "@/backend/auth-crypto";
+import { ensureDefaultBlogContent } from "@/backend/folders";
+import { fail, json, readJson } from "@/backend/http";
+import { prisma } from "@/backend/prisma";
+import { parseCredentials } from "@/backend/validation";
 
 export const runtime = "nodejs";
 

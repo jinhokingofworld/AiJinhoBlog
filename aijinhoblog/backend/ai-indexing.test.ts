@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { EmbeddingSkippedError, type EmbeddingClient } from "@/lib/ai-embedding";
-import { deletePostVectorIndex, syncPostVectorIndex, type IndexablePost } from "@/lib/ai-indexing";
+import { EmbeddingSkippedError, type EmbeddingClient } from "@/backend/ai-embedding";
+import {
+  deletePostVectorIndex,
+  syncPostVectorIndex,
+  type IndexablePost,
+} from "@/backend/ai-indexing";
 import {
   buildPostIndexText,
   createPostContentHash,
   normalizeKnowledgeText,
   splitTextIntoChunks,
-} from "@/lib/ai-text";
-import { ChromaVectorStoreError, type VectorStore } from "@/lib/ai-vector-store";
+} from "@/backend/ai-text";
+import { ChromaVectorStoreError, type VectorStore } from "@/backend/ai-vector-store";
 
 function createPost(overrides: Partial<IndexablePost> = {}): IndexablePost {
   return {

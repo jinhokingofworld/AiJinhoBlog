@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 
-import { PageFrame } from "@/app/_components/page-frame";
-import { FolderSettingsClient } from "@/app/[username]/settings/folders/folder-settings-client";
-import { getCurrentUser } from "@/lib/auth";
-import { ensureDefaultFolder, listFolders, serializeFolder } from "@/lib/folders";
+import { PageFrame } from "@/frontend/components/page-frame";
+import { FolderSettingsClient } from "@/frontend/features/settings/folder-settings-client";
+import { getCurrentUser } from "@/backend/auth";
+import { ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/folders";
 
 type Props = {
   params: Promise<{

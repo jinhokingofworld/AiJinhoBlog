@@ -1,5 +1,5 @@
-import type { Prisma } from "@/lib/generated/prisma";
-import type { PostStatusInput, PostVisibilityInput } from "@/lib/validation";
+import type { Prisma } from "@/backend/generated/prisma";
+import type { PostStatusInput, PostVisibilityInput } from "@/backend/validation";
 
 export const POST_PAGE_SIZE = 5;
 export const POST_PAGE_WINDOW_SIZE = 3;

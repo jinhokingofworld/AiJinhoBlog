@@ -62,6 +62,17 @@ Phase 1에서는 **기본 블로그 기능을 완성하는 것**을 우선합니
 
 본 프로젝트는 효율적인 작업 추적과 지속적인 통합을 위해 **GitHub Projects를 활용한 이슈 기반 관리** 프로세스를 따릅니다.
 
+### 🧱 앱 폴더 구조 원칙
+
+Next.js의 `app/` 폴더는 URL 라우트 엔트리포인트로 유지합니다. 실제 구현은 프론트엔드와 백엔드 책임을 나누어 다음 폴더에 배치합니다.
+
+- `aijinhoblog/frontend/`: React UI 컴포넌트, client component, 화면 조립에 필요한 재사용 컴포넌트를 둡니다.
+- `aijinhoblog/backend/`: 인증, Prisma, 도메인 로직, API route helper, AI 인덱싱, 서버 액션을 둡니다.
+- `aijinhoblog/app/`: page/route/layout 파일만 남겨 URL, 라우팅, 서버 데이터 로딩의 진입점 역할을 하게 합니다. 페이지 파일은 `frontend/`와 `backend/`의 구현을 조립하는 얇은 파일로 유지합니다.
+- Prisma generated client는 `aijinhoblog/backend/generated/prisma/`에 생성하며 Git에는 포함하지 않습니다.
+
+프론트엔드 작업자는 `frontend/`를 중심으로 UI를 수정하고, 백엔드 작업자는 `backend/`와 `app/api/`를 중심으로 API와 데이터 로직을 수정합니다. 공통 레이아웃 기준값은 `frontend/components/page-frame.tsx`에서 관리해 페이지마다 max-width나 padding이 달라지는 문제를 방지합니다.
+
 ### 🤖 이슈 관리 담당 원칙
 
 프로젝트의 계획 정리, 이슈 관리, 브랜치 관리, 커밋 흐름은 기본적으로 AI Assistant가 함께 관리합니다.

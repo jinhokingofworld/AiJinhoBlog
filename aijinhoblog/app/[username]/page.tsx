@@ -7,10 +7,10 @@ import {
   FolderDropdown,
   Pagination,
   ProfileSummaryCard,
-} from "@/app/_components/blog-components";
-import { PageFrame } from "@/app/_components/page-frame";
-import { logoutAction } from "@/app/auth-actions";
-import { getCurrentUser } from "@/lib/auth";
+} from "@/frontend/components/blog-components";
+import { PageFrame } from "@/frontend/components/page-frame";
+import { logoutAction } from "@/backend/actions/auth-actions";
+import { getCurrentUser } from "@/backend/auth";
 import {
   createPageWindow,
   createPostAccessWhere,
@@ -20,10 +20,10 @@ import {
   normalizePostSearchQuery,
   type PostListSort,
   POST_PAGE_SIZE,
-} from "@/lib/posts";
-import { profileSelect, serializeProfile } from "@/lib/profile";
-import { prisma } from "@/lib/prisma";
-import { parsePositiveInt } from "@/lib/validation";
+} from "@/backend/posts";
+import { profileSelect, serializeProfile } from "@/backend/profile";
+import { prisma } from "@/backend/prisma";
+import { parsePositiveInt } from "@/backend/validation";
 
 export const dynamic = "force-dynamic";
 

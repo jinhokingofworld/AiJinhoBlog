@@ -12,7 +12,7 @@ import {
   parseProfilePayload,
   parsePostPayload,
   validateUsername,
-} from "@/lib/validation";
+} from "@/backend/validation";
 
 describe("validation", () => {
   it("normalizes unique lowercase tags", () => {

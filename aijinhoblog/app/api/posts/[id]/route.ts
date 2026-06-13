@@ -1,16 +1,16 @@
-import { getCurrentUser } from "@/lib/auth";
-import { deletePostVectorIndex, syncPostVectorIndex } from "@/lib/ai-indexing";
-import { resolvePostFolderId } from "@/lib/folders";
-import { fail, json, readJson } from "@/lib/http";
+import { getCurrentUser } from "@/backend/auth";
+import { deletePostVectorIndex, syncPostVectorIndex } from "@/backend/ai-indexing";
+import { resolvePostFolderId } from "@/backend/folders";
+import { fail, json, readJson } from "@/backend/http";
 import {
   canReadPost,
   postDetailInclude,
   resolvePublishedAt,
   serializePost,
   toPostTagCreate,
-} from "@/lib/posts";
-import { prisma } from "@/lib/prisma";
-import { parsePostPayload } from "@/lib/validation";
+} from "@/backend/posts";
+import { prisma } from "@/backend/prisma";
+import { parsePostPayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
 

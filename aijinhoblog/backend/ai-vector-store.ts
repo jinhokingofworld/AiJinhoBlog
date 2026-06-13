@@ -1,4 +1,8 @@
-import { RetryableRequestError, type RetryFetchResult, fetchJsonWithRetry } from "@/lib/ai-http";
+import {
+  RetryableRequestError,
+  type RetryFetchResult,
+  fetchJsonWithRetry,
+} from "@/backend/ai-http";
 
 export type VectorMetadata = Record<string, string | number | boolean>;
 

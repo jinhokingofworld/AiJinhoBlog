@@ -1,8 +1,12 @@
 import Link from "next/link";
 
-import { cx, pageFrameMaxWidthClass, pageFramePaddingClass } from "@/app/_components/page-frame";
-import { logoutAction } from "@/app/auth-actions";
-import { getCurrentUser } from "@/lib/auth";
+import {
+  cx,
+  pageFrameMaxWidthClass,
+  pageFramePaddingClass,
+} from "@/frontend/components/page-frame";
+import { logoutAction } from "@/backend/actions/auth-actions";
+import { getCurrentUser } from "@/backend/auth";
 
 export default async function DesktopAccountBar() {
   const currentUser = await getCurrentUser();

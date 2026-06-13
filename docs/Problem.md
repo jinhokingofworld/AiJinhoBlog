@@ -485,3 +485,17 @@ Phase 2 backfill script 검증을 위해 `npm --prefix aijinhoblog run ai:backfi
 ### 해결 방법
 
 `app/_components/page-frame.tsx`에 공통 `PageFrame`, `pageFramePaddingClass`, `pageFrameMaxWidthClass`를 만들고, `app/_components/blog-components.tsx`에 `BlogHeroHeader`, `ProfileSummaryCard`, `FolderDropdown`, `Pagination`을 분리했다. 블로그 홈, 게시글 상세, 글쓰기/수정, 설정 허브와 하위 설정 페이지가 이 공통 프레임을 사용하도록 변경했다. 전역 계정 상태 바도 같은 프레임 상수를 import해 기준이 한 곳에서 관리되도록 했다.
+
+## 35. 프론트엔드와 백엔드 구현 파일 경계 불명확
+
+### 문제 정의
+
+Next.js `app/` 라우트 아래에 page, API route, React component, client component, 서버 액션이 섞여 있고, 서버 도메인 로직은 `lib/`에 모여 있었다. 이 구조에서는 프론트엔드와 백엔드를 동시에 구현할 때 어떤 파일이 화면 책임인지, 어떤 파일이 서버 책임인지 빠르게 구분하기 어려웠다.
+
+### 발생 원인
+
+Next.js App Router가 page와 route를 같은 `app/` 트리 안에서 관리하다 보니, 라우트 엔트리포인트와 실제 구현 코드가 함께 커졌다. 또한 `lib/`라는 이름은 백엔드 도메인 로직, Prisma 접근, AI 인덱싱, validation, HTTP helper를 모두 포괄해 역할이 명확하지 않았다.
+
+### 해결 방법
+
+`frontend/`와 `backend/` 폴더를 명시적으로 추가했다. React UI, client component, 재사용 화면 컴포넌트는 `aijinhoblog/frontend/`로 이동했고, 인증, Prisma, 도메인 로직, API helper, AI 인덱싱, 서버 액션은 `aijinhoblog/backend/`로 이동했다. `app/`에는 URL별 page/route/layout 엔트리포인트만 남겨 `frontend/`와 `backend/` 구현을 조립하게 했다. Prisma generated client 출력도 `backend/generated/prisma`로 변경하고 관련 ignore, lint, 문서 경로를 갱신했다.

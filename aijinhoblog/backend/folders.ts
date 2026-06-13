@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/backend/prisma";
 
 export const DEFAULT_FOLDER_NAME = "기본 폴더";
 export const DEFAULT_POST_TITLE = "AiJinhoBlog 시작 글";

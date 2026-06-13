@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import DesktopAccountBar from "./desktop-account-bar";
+import DesktopAccountBar from "@/frontend/components/desktop-account-bar";
 import "./globals.css";
 
 export const metadata: Metadata = {
