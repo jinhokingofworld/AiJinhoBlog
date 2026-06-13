@@ -91,6 +91,8 @@ npm run build
 
 DB 기반 수동 검증은 MySQL 컨테이너 실행과 migration 적용 이후 진행합니다.
 
+배포 준비와 운영 환경 구성은 [docs/deployment.md](/Users/j/Desktop/Jungle/week15-16/AiJinhoBlog/docs/deployment.md)를 기준으로 확인합니다.
+
 ## 서비스 명령어
 
 ```bash

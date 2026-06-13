@@ -19,10 +19,11 @@ body:
         - Phase 0. 프로젝트 기준 정리
         - Phase 1. 기본 블로그 기반 구현
         - Phase 2. AI 데이터 파이프라인 구축
-        - Phase 3. RAG 기능 구현
-        - Phase 4. MCP 연동
-        - Phase 5. AI Agent 기능 구현
-        - Phase 6. 품질 안정화 및 배포 준비
+        - Phase 3. Dropbox Markdown 지식 소스 확보
+        - Phase 4. RAG 기능 구현
+        - Phase 5. MCP 연동
+        - Phase 6. AI Agent 기능 구현
+        - Phase 7. 품질 안정화 및 배포 준비
         - Future Scope
     validations:
       required: true
