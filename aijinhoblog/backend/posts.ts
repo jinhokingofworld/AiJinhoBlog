@@ -1,5 +1,8 @@
 import type { Prisma } from "@/backend/generated/prisma";
 import type { PostStatusInput, PostVisibilityInput } from "@/backend/validation";
+import { resolvePostFolderId } from "@/backend/folders";
+import { prisma } from "@/backend/prisma";
+import { type PostInput } from "@/backend/validation";
 
 export const POST_PAGE_SIZE = 5;
 export const POST_PAGE_WINDOW_SIZE = 3;
@@ -286,4 +289,170 @@ export function toPostTagCreate(tagNames: string[]) {
       },
     },
   }));
+}
+
+export class PostServiceError extends Error {
+  status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "PostServiceError";
+    this.status = status;
+  }
+}
+
+export async function createOwnerPost(ownerId: string, input: PostInput) {
+  const folder = await resolvePostFolderId(ownerId, input.folderId);
+
+  if (!folder.ok) {
+    throw new PostServiceError(folder.error, 404);
+  }
+
+  const post = await prisma.post.create({
+    data: {
+      title: input.title,
+      excerpt: input.excerpt,
+      content: input.content,
+      status: input.status,
+      visibility: input.visibility,
+      publishedAt: resolvePublishedAt(input.status),
+      authorId: ownerId,
+      folderId: folder.folderId,
+      tags: {
+        create: toPostTagCreate(input.tagNames),
+      },
+    },
+    include: postSummaryInclude,
+  });
+
+  return serializePost(post);
+}
+
+export async function updateOwnerPost(ownerId: string, postId: string, input: PostInput) {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
+    select: {
+      authorId: true,
+      publishedAt: true,
+    },
+  });
+
+  if (!post) {
+    throw new PostServiceError("게시글을 찾을 수 없습니다.", 404);
+  }
+
+  if (post.authorId !== ownerId) {
+    throw new PostServiceError("게시글 작성자만 수정할 수 있습니다.", 403);
+  }
+
+  const folder = await resolvePostFolderId(ownerId, input.folderId);
+
+  if (!folder.ok) {
+    throw new PostServiceError(folder.error, 404);
+  }
+
+  const [, updatedPost] = await prisma.$transaction([
+    prisma.postTag.deleteMany({
+      where: {
+        postId,
+      },
+    }),
+    prisma.post.update({
+      where: {
+        id: postId,
+      },
+      data: {
+        title: input.title,
+        excerpt: input.excerpt,
+        content: input.content,
+        status: input.status,
+        visibility: input.visibility,
+        publishedAt: resolvePublishedAt(input.status, post.publishedAt),
+        folderId: folder.folderId,
+        tags: {
+          create: toPostTagCreate(input.tagNames),
+        },
+      },
+      include: postDetailInclude,
+    }),
+  ]);
+
+  return serializePost(updatedPost);
+}
+
+export async function deleteOwnerPost(ownerId: string, postId: string) {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
+    select: {
+      authorId: true,
+    },
+  });
+
+  if (!post) {
+    throw new PostServiceError("게시글을 찾을 수 없습니다.", 404);
+  }
+
+  if (post.authorId !== ownerId) {
+    throw new PostServiceError("게시글 작성자만 삭제할 수 있습니다.", 403);
+  }
+
+  await prisma.post.delete({
+    where: {
+      id: postId,
+    },
+  });
+
+  return {
+    ok: true,
+  };
+}
+
+export async function listOwnerPosts({
+  limit = 10,
+  ownerId,
+  query,
+  sort = "latest",
+}: {
+  limit?: number;
+  ownerId: string;
+  query?: string | null;
+  sort?: PostListSort;
+}) {
+  const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 50);
+  const where: Prisma.PostWhereInput = {
+    authorId: ownerId,
+  };
+
+  Object.assign(where, createPostListFilterWhere({ query }));
+
+  const posts = await prisma.post.findMany({
+    where,
+    include: postSummaryInclude,
+    orderBy: {
+      createdAt: sort === "oldest" ? "asc" : "desc",
+    },
+    take: safeLimit,
+  });
+
+  return posts.map(serializePost);
+}
+
+export async function getOwnerPost(ownerId: string, postId: string) {
+  const post = await prisma.post.findFirst({
+    where: {
+      authorId: ownerId,
+      id: postId,
+    },
+    include: postDetailInclude,
+  });
+
+  if (!post) {
+    throw new PostServiceError("게시글을 찾을 수 없습니다.", 404);
+  }
+
+  return serializePost(post);
 }

@@ -14,16 +14,20 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "ai:backfill": "tsx scripts/backfill-vector-index.ts",
     "dropbox:sync": "tsx scripts/sync-dropbox-markdown.ts",
+    "mcp:server": "tsx scripts/mcp-server.ts",
+    "mcp:smoke": "tsx scripts/mcp-smoke-test.ts",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "marked": "^18.0.5",
     "next": "16.2.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
