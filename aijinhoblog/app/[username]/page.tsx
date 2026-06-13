@@ -334,7 +334,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
         </section>
 
         <section className="mt-3 border border-zinc-300 bg-white p-4 sm:p-6">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-4 border-b border-zinc-200 pb-4 sm:flex sm:flex-col sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-4 border-b border-zinc-200 pb-4 sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:items-center">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold">글 목록</h2>
               <p className="mt-1 text-sm text-zinc-500">
@@ -345,7 +345,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
             <div className="contents sm:flex sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <form
                 action={`/${profile.username}`}
-                className="order-3 col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:order-1 sm:col-span-1 sm:w-auto sm:grid-cols-[16rem_auto_auto] md:grid-cols-[18rem_auto_auto] lg:order-2 lg:grid-cols-[20rem_auto_auto]"
+                className="order-3 col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] justify-start gap-x-[5px] gap-y-2 sm:order-1 sm:col-span-1 sm:w-auto sm:grid-cols-[16rem_auto_auto] md:grid-cols-[18rem_auto_auto] lg:order-2 lg:grid-cols-[20rem_auto_auto]"
                 method="get"
               >
                 <input name="sort" type="hidden" value={sort} />
@@ -356,7 +356,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   글 검색
                 </label>
                 <input
-                  className="h-10 min-w-0 border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-950 sm:w-64"
+                  className="h-10 min-w-0 border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-950"
                   defaultValue={searchQuery ?? ""}
                   id="post-search"
                   name="query"
