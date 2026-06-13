@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { marked } from "marked";
+
 export const DEFAULT_CHUNK_MAX_LENGTH = 1200;
 export const DEFAULT_CHUNK_OVERLAP = 120;
 
@@ -12,6 +14,16 @@ export type IndexablePostText = {
   folderId?: string | null;
 };
 
+type MarkdownToken = {
+  type?: string;
+  text?: string;
+  raw?: string;
+  tokens?: MarkdownToken[];
+  items?: MarkdownToken[];
+  header?: MarkdownToken[];
+  rows?: MarkdownToken[][];
+};
+
 function decodeBasicHtmlEntities(value: string) {
   return value
     .replace(/&nbsp;/gi, " ")
@@ -22,19 +34,80 @@ function decodeBasicHtmlEntities(value: string) {
     .replace(/&#39;/gi, "'");
 }
 
-export function normalizeKnowledgeText(value: string) {
+function normalizePlainText(value: string) {
   return decodeBasicHtmlEntities(value)
     .replace(/\r\n?/g, "\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li|h[1-6]|blockquote)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/`{1,3}/g, "")
-    .replace(/[*_~>#-]+/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function stripHtml(value: string) {
+  return decodeBasicHtmlEntities(value)
+    .replace(/\r\n?/g, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)>/gi, "\n")
+    .replace(/<\/(td|th)>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+}
+
+function extractMarkdownTokenText(token: MarkdownToken): string[] {
+  if (token.type === "space" || token.type === "hr") {
+    return [];
+  }
+
+  if (token.type === "image") {
+    return token.text ? [token.text] : [];
+  }
+
+  const nested = [
+    ...(token.tokens ?? []),
+    ...(token.items ?? []),
+    ...(token.header ?? []),
+    ...(token.rows?.flat() ?? []),
+  ];
+
+  if (nested.length) {
+    const text = nested.flatMap(extractMarkdownTokenText);
+
+    if (
+      ["codespan", "del", "em", "heading", "link", "paragraph", "strong", "text"].includes(
+        token.type ?? "",
+      )
+    ) {
+      return [
+        text
+          .join(" ")
+          .replace(/[ \t]+/g, " ")
+          .trim(),
+      ].filter(Boolean);
+    }
+
+    return text;
+  }
+
+  if (typeof token.text === "string") {
+    return [token.text];
+  }
+
+  return [];
+}
+
+function extractMarkdownText(value: string) {
+  const tokens = marked.lexer(value, {
+    breaks: true,
+    gfm: true,
+  }) as unknown as MarkdownToken[];
+
+  return tokens.flatMap(extractMarkdownTokenText).join("\n");
+}
+
+export function normalizeKnowledgeText(value: string) {
+  const withoutHtml = stripHtml(value);
+  const markdownText = extractMarkdownText(withoutHtml);
+
+  return normalizePlainText(markdownText || withoutHtml);
 }
 
 export function buildPostIndexText(post: IndexablePostText) {
