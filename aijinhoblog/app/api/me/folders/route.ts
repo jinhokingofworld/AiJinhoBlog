@@ -1,4 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { createFolder, ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/folders";
 import { fail, json, readJson } from "@/backend/http";
 import { parseFolderPayload } from "@/backend/validation";
@@ -6,7 +10,8 @@ import { parseFolderPayload } from "@/backend/validation";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -14,12 +19,14 @@ export async function GET() {
 
   await ensureDefaultFolder(user.id);
   const folders = await listFolders(user.id);
+  const response = json({ folders: folders.map(serializeFolder) });
 
-  return json({ folders: folders.map(serializeFolder) });
+  return attachRefreshedSessionCookie(response, auth);
 }
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -29,13 +36,15 @@ export async function POST(request: Request) {
   const parsed = parseFolderPayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   try {
     const folder = await createFolder(user.id, parsed.value.name);
-    return json({ folder: serializeFolder(folder) }, 201);
+    const response = json({ folder: serializeFolder(folder) }, 201);
+
+    return attachRefreshedSessionCookie(response, auth);
   } catch {
-    return fail("이미 같은 이름의 폴더가 있습니다.", 409);
+    return failWithRefreshedSession("이미 같은 이름의 폴더가 있습니다.", auth, 409);
   }
 }

@@ -62,21 +62,47 @@ export function BlogHeroHeader({
 
 type ProfileSummaryCardProps = {
   imageSize?: number;
+  mode?: "default" | "detail";
   profile: BlogProfileView;
 };
 
-export function ProfileSummaryCard({ imageSize = 226, profile }: ProfileSummaryCardProps) {
+export function ProfileSummaryCard({
+  imageSize = 226,
+  mode = "default",
+  profile,
+}: ProfileSummaryCardProps) {
+  const isDetailMode = mode === "detail";
+
   return (
-    <section className="border border-zinc-300 bg-white p-4">
+    <section
+      className={cx(
+        "border border-zinc-300 bg-white p-4",
+        isDetailMode ? "flex items-start gap-4 lg:block" : "",
+      )}
+    >
       <Image
         alt={`${profile.name} 프로필 이미지`}
-        className="aspect-square w-full border border-zinc-300 bg-zinc-50 object-cover"
+        className={cx(
+          "aspect-square border border-zinc-300 bg-zinc-50 object-cover",
+          isDetailMode ? "h-20 w-20 shrink-0 sm:h-24 sm:w-24 lg:h-auto lg:w-full" : "w-full",
+        )}
         height={imageSize}
         src={profile.profileImageUrl}
         width={imageSize}
       />
-      <h2 className="mt-4 text-lg font-semibold">{profile.name}</h2>
-      <p className="mt-3 text-sm leading-6 text-zinc-600">{profile.intro}</p>
+      <div className={isDetailMode ? "min-w-0 lg:mt-4" : ""}>
+        <h2 className={cx("font-semibold", isDetailMode ? "text-base lg:text-lg" : "mt-4 text-lg")}>
+          {profile.name}
+        </h2>
+        <p
+          className={cx(
+            "text-sm leading-6 text-zinc-600",
+            isDetailMode ? "mt-2 line-clamp-3 lg:mt-3 lg:line-clamp-none" : "mt-3",
+          )}
+        >
+          {profile.intro}
+        </p>
+      </div>
     </section>
   );
 }

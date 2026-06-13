@@ -36,17 +36,32 @@ type Props = {
     page?: string;
     query?: string;
     sort?: string;
+    status?: string;
   }>;
 };
+
+type OwnerPostStatusFilter = "all" | "published" | "draft" | "private";
 
 type BlogListHrefOptions = {
   folderId?: string | null;
   page: number;
   query?: string | null;
   sort: PostListSort;
+  status?: OwnerPostStatusFilter;
 };
 
-function createPageHref(username: string, { folderId, page, query, sort }: BlogListHrefOptions) {
+function normalizeOwnerPostStatusFilter(value: string | null | undefined): OwnerPostStatusFilter {
+  if (value === "published" || value === "draft" || value === "private") {
+    return value;
+  }
+
+  return "all";
+}
+
+function createPageHref(
+  username: string,
+  { folderId, page, query, sort, status }: BlogListHrefOptions,
+) {
   const params = new URLSearchParams({
     page: String(page),
     sort,
@@ -58,6 +73,10 @@ function createPageHref(username: string, { folderId, page, query, sort }: BlogL
 
   if (query) {
     params.set("query", query);
+  }
+
+  if (status && status !== "all") {
+    params.set("status", status);
   }
 
   return `/${username}?${params.toString()}`;
@@ -106,6 +125,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
   }
 
   const isOwner = currentUser?.id === blog.id;
+  const ownerStatusFilter = isOwner ? normalizeOwnerPostStatusFilter(query.status) : "all";
   const profile = serializeProfile(blog);
   const folders = await prisma.folder.findMany({
     where: {
@@ -147,6 +167,21 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
     where.folderId = selectedFolderId;
   }
 
+  if (isOwner) {
+    if (ownerStatusFilter === "published") {
+      where.status = "PUBLISHED";
+      where.visibility = "PUBLIC";
+    }
+
+    if (ownerStatusFilter === "draft") {
+      where.status = "DRAFT";
+    }
+
+    if (ownerStatusFilter === "private") {
+      where.visibility = "PRIVATE";
+    }
+  }
+
   const total = await prisma.post.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / POST_PAGE_SIZE));
   const page = Math.min(requestedPage, totalPages);
@@ -178,18 +213,29 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
           },
         },
       },
+      _count: {
+        select: {
+          comments: true,
+        },
+      },
       createdAt: true,
     },
     skip: (page - 1) * POST_PAGE_SIZE,
     take: POST_PAGE_SIZE,
   });
   const pageNumbers = createPageWindow(page, totalPages);
-  const hasActiveFilters = Boolean(searchQuery || selectedFolderId);
+  const hasActiveFilters = Boolean(searchQuery || selectedFolderId || ownerStatusFilter !== "all");
   const selectedFolder = selectedFolderId
     ? folders.find((folder) => folder.id === selectedFolderId)
     : null;
   const selectedFolderLabel = selectedFolder?.name ?? "전체";
   const menuLinkClass = "block px-4 py-3 text-sm font-medium hover:bg-zinc-100";
+  const ownerStatusFilters: Array<{ label: string; value: OwnerPostStatusFilter }> = [
+    { label: "전체", value: "all" },
+    { label: "공개", value: "published" },
+    { label: "임시저장", value: "draft" },
+    { label: "비공개", value: "private" },
+  ];
 
   return (
     <PageFrame>
@@ -270,6 +316,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 page: 1,
                 query: searchQuery,
                 sort,
+                status: ownerStatusFilter,
               })}
               folders={folders}
               getFolderHref={(folderId) =>
@@ -278,6 +325,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   page: 1,
                   query: searchQuery,
                   sort,
+                  status: ownerStatusFilter,
                 })
               }
               selectedFolderId={selectedFolderId}
@@ -321,6 +369,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   page: 1,
                   query: searchQuery,
                   sort,
+                  status: ownerStatusFilter,
                 })}
                 folders={folders}
                 getFolderHref={(folderId) =>
@@ -329,6 +378,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     page: 1,
                     query: searchQuery,
                     sort,
+                    status: ownerStatusFilter,
                   })
                 }
                 selectedFolderId={selectedFolderId}
@@ -353,6 +403,9 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   method="get"
                 >
                   <input name="sort" type="hidden" value={sort} />
+                  {isOwner && ownerStatusFilter !== "all" ? (
+                    <input name="status" type="hidden" value={ownerStatusFilter} />
+                  ) : null}
                   {selectedFolderId ? (
                     <input name="folderId" type="hidden" value={selectedFolderId} />
                   ) : null}
@@ -380,6 +433,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                         folderId: selectedFolderId,
                         page: 1,
                         sort,
+                        status: ownerStatusFilter,
                       })}
                     >
                       초기화
@@ -394,6 +448,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                       page: 1,
                       query: searchQuery,
                       sort: "latest",
+                      status: ownerStatusFilter,
                     })}
                   >
                     최신순
@@ -405,6 +460,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                       page: 1,
                       query: searchQuery,
                       sort: "oldest",
+                      status: ownerStatusFilter,
                     })}
                   >
                     오래된순
@@ -412,6 +468,30 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 </div>
               </div>
             </div>
+
+            {isOwner ? (
+              <div className="mt-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-4 text-sm">
+                {ownerStatusFilters.map((filter) => (
+                  <Link
+                    className={`border border-zinc-300 px-3 py-2 ${
+                      ownerStatusFilter === filter.value
+                        ? "bg-zinc-950 text-white"
+                        : "hover:bg-zinc-50"
+                    }`}
+                    href={createPageHref(profile.username, {
+                      folderId: selectedFolderId,
+                      page: 1,
+                      query: searchQuery,
+                      sort,
+                      status: filter.value,
+                    })}
+                    key={filter.value}
+                  >
+                    {filter.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
 
             <div className="mt-5 space-y-3">
               {posts.length ? (
@@ -448,6 +528,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                       <p className="text-xs text-zinc-500">
                         {post.createdAt.toLocaleDateString("ko-KR")}
                         {post.folder ? ` · ${post.folder.name}` : ""}
+                        {` · 댓글 ${post._count.comments}개`}
                       </p>
                       {post.tags.length ? (
                         <div className="ml-auto flex flex-wrap justify-end gap-1">
@@ -489,6 +570,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     page: pageNumber,
                     query: searchQuery,
                     sort,
+                    status: ownerStatusFilter,
                   })
                 }
                 page={page}

@@ -3,7 +3,6 @@ export const DEFAULT_COVER_IMAGE_URL = "/default-cover.svg";
 
 type ProfileRecord = {
   id: string;
-  email?: string;
   username: string;
   name: string;
   intro: string | null;
@@ -14,7 +13,6 @@ type ProfileRecord = {
 
 export const profileSelect = {
   id: true,
-  email: true,
   username: true,
   name: true,
   intro: true,
@@ -30,7 +28,6 @@ export function getDefaultIntro(username: string) {
 export function serializeProfile(user: ProfileRecord) {
   return {
     id: user.id,
-    email: user.email,
     username: user.username,
     name: user.name,
     intro: user.intro ?? getDefaultIntro(user.username),

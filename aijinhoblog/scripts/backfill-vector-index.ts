@@ -1,8 +1,14 @@
 import type { Prisma } from "@/backend/generated/prisma";
 
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { loadEnvConfig } from "@next/env";
 
-loadEnvConfig(process.cwd());
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = resolve(scriptDir, "../..");
+
+loadEnvConfig(workspaceRoot);
 
 type CliOptions = {
   delayMs: number;

@@ -4,5 +4,5 @@ out/
 build/
 dist/
 coverage/
-lib/generated/prisma/
+backend/generated/prisma/
 package-lock.json

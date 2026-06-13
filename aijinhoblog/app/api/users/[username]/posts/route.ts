@@ -1,5 +1,9 @@
-import { getCurrentUser } from "@/backend/auth";
-import { fail, json } from "@/backend/http";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
+import { json } from "@/backend/http";
 import {
   createPostListFilterWhere,
   createPostAccessWhere,
@@ -34,8 +38,8 @@ export async function GET(request: Request, { params }: Params) {
   const query = url.searchParams.get("query");
   const tag = url.searchParams.get("tag");
   const folderId = url.searchParams.get("folderId")?.trim();
-  const [currentUser, author] = await Promise.all([
-    getCurrentUser(),
+  const [auth, author] = await Promise.all([
+    getCurrentUserOrRefresh(),
     prisma.user.findUnique({
       where: {
         username,
@@ -47,9 +51,10 @@ export async function GET(request: Request, { params }: Params) {
   ]);
 
   if (!author) {
-    return fail("사용자를 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("사용자를 찾을 수 없습니다.", auth, 404);
   }
 
+  const currentUser = auth.user;
   const where = createPostAccessWhere(author.id, currentUser?.id);
   Object.assign(where, createPostListFilterWhere({ query, tag }));
 
@@ -65,7 +70,7 @@ export async function GET(request: Request, { params }: Params) {
     });
 
     if (!folder) {
-      return fail("폴더를 찾을 수 없습니다.", 404);
+      return failWithRefreshedSession("폴더를 찾을 수 없습니다.", auth, 404);
     }
 
     where.folderId = folder.id;
@@ -84,7 +89,7 @@ export async function GET(request: Request, { params }: Params) {
     }),
   ]);
 
-  return json({
+  const response = json({
     posts: posts.map(serializePost),
     pagination: {
       page,
@@ -94,4 +99,6 @@ export async function GET(request: Request, { params }: Params) {
     },
     sort,
   });
+
+  return attachRefreshedSessionCookie(response, auth);
 }

@@ -1,4 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { fail, json } from "@/backend/http";
 import { profileSelect, serializeProfile } from "@/backend/profile";
 import { prisma } from "@/backend/prisma";
@@ -7,7 +11,8 @@ import { deleteLocalUpload, saveImageUpload } from "@/backend/uploads";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -17,7 +22,7 @@ export async function POST(request: Request) {
   const file = formData.get("image");
 
   if (!(file instanceof File)) {
-    return fail("이미지 파일이 필요합니다.", 400);
+    return failWithRefreshedSession("이미지 파일이 필요합니다.", auth, 400);
   }
 
   const current = await prisma.user.findUnique({
@@ -43,8 +48,14 @@ export async function POST(request: Request) {
 
     await deleteLocalUpload(current?.profileImageUrl);
 
-    return json({ imageUrl, profile: serializeProfile(updated) });
+    const response = json({ imageUrl, profile: serializeProfile(updated) });
+
+    return attachRefreshedSessionCookie(response, auth);
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "이미지 업로드 실패", 400);
+    return failWithRefreshedSession(
+      error instanceof Error ? error.message : "이미지 업로드 실패",
+      auth,
+      400,
+    );
   }
 }

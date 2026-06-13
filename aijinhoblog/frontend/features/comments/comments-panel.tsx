@@ -62,6 +62,10 @@ export function CommentsPanel({ postId, postAuthorId, currentUser, initialCommen
   }
 
   async function deleteComment(commentId: string) {
+    if (!window.confirm("댓글을 삭제하시겠습니까?")) {
+      return;
+    }
+
     const response = await fetch(`/api/comments/${commentId}`, {
       method: "DELETE",
     });

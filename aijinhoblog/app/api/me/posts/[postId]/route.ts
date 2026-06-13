@@ -1,5 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
-import { deletePostVectorIndex, syncPostVectorIndex } from "@/backend/ai-indexing";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { resolvePostFolderId } from "@/backend/folders";
 import { fail, json, readJson } from "@/backend/http";
 import {
@@ -20,7 +23,8 @@ type Params = {
 };
 
 export async function PATCH(request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -31,7 +35,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const parsed = parsePostPayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   const post = await prisma.post.findUnique({
@@ -45,17 +49,17 @@ export async function PATCH(request: Request, { params }: Params) {
   });
 
   if (!post) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
 
   if (post.authorId !== user.id) {
-    return fail("게시글 작성자만 수정할 수 있습니다.", 403);
+    return failWithRefreshedSession("게시글 작성자만 수정할 수 있습니다.", auth, 403);
   }
 
   const folder = await resolvePostFolderId(user.id, parsed.value.folderId);
 
   if (!folder.ok) {
-    return fail(folder.error, 404);
+    return failWithRefreshedSession(folder.error, auth, 404);
   }
 
   const [, updatedPost] = await prisma.$transaction([
@@ -83,13 +87,14 @@ export async function PATCH(request: Request, { params }: Params) {
       include: postDetailInclude,
     }),
   ]);
-  const aiPipeline = await syncPostVectorIndex(updatedPost);
+  const response = json({ post: serializePost(updatedPost) });
 
-  return json({ post: serializePost(updatedPost), aiPipeline });
+  return attachRefreshedSessionCookie(response, auth);
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -106,20 +111,11 @@ export async function DELETE(_request: Request, { params }: Params) {
   });
 
   if (!post) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
 
   if (post.authorId !== user.id) {
-    return fail("게시글 작성자만 삭제할 수 있습니다.", 403);
-  }
-
-  const aiPipeline = await deletePostVectorIndex({
-    id: postId,
-    authorId: user.id,
-  });
-
-  if (aiPipeline.status === "FAILED") {
-    return fail(aiPipeline.message, 502);
+    return failWithRefreshedSession("게시글 작성자만 삭제할 수 있습니다.", auth, 403);
   }
 
   await prisma.post.delete({
@@ -127,6 +123,7 @@ export async function DELETE(_request: Request, { params }: Params) {
       id: postId,
     },
   });
+  const response = json({ ok: true });
 
-  return json({ ok: true, aiPipeline });
+  return attachRefreshedSessionCookie(response, auth);
 }

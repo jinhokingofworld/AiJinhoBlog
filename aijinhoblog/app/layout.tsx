@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   description: "개인 블로그와 AI 기능을 결합한 지식 기반 블로그",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{

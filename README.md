@@ -57,6 +57,9 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `DELETE /api/me/posts/{postId}`
 - `GET /api/me/posts/{postId}/vector-index`
 - `POST /api/me/posts/{postId}/vector-index`
+- `GET /api/me/dropbox/markdown`: Dropbox Markdown 파일 목록 조회
+- `GET /api/me/dropbox/markdown/content?path={path}`: Dropbox Markdown 파일 본문 읽기
+- `POST /api/me/dropbox/markdown/sync`: Dropbox Markdown 문서 저장 및 ChromaDB 색인
 - `POST /api/posts/{postId}/comments`
 - `DELETE /api/comments/{commentId}`
 - `GET /api/me/folders`
@@ -86,9 +89,19 @@ npm run services:down
 npm run services:config
 ```
 
+## Dropbox Markdown 동기화
+
+Phase 3 이후에는 `DROPBOX_ACCESS_TOKEN`이 설정된 환경에서 Dropbox Markdown 파일을 내부 지식 소스로 동기화할 수 있습니다.
+
+```bash
+npm --prefix aijinhoblog run dropbox:sync -- --username {username}
+```
+
+동기화는 Dropbox의 `.md`, `.markdown` 파일을 읽고, Markdown 본문을 plain text로 정규화한 뒤 OpenAI embedding과 ChromaDB vector 저장까지 수행합니다. 먼저 대상 파일만 확인하려면 `--dry-run`을 사용합니다.
+
 ## 환경 변수
 
-루트와 Next.js 앱 폴더에 기본 `.env` 파일을 추가했습니다.
+환경 변수는 루트 `.env` 하나만 사용합니다.
 
 실제 비밀키는 `.env`에만 넣고, 공유 가능한 기본값은 `.env.example`에 남깁니다.
 
@@ -97,4 +110,4 @@ npm run services:config
 - `OPENAI_EMBEDDING_MODEL`: embedding 모델명
 - `CHROMA_URL`: ChromaDB 서버 주소
 - `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름
-- `DROPBOX_ACCESS_TOKEN`: Dropbox MCP 연동용 토큰, Phase 2 이후 사용
+- `DROPBOX_ACCESS_TOKEN`: Dropbox Markdown 목록 조회와 파일 본문 읽기에 사용하는 read-only 토큰, Phase 3A 이후 사용

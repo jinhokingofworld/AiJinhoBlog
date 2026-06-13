@@ -8,23 +8,25 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique @db.VarChar(191)
-  username     String    @unique @db.VarChar(30)
-  name         String    @db.VarChar(80)
-  intro        String?   @db.VarChar(50)
-  blogTitle    String    @default("AiJinhoBlog") @db.VarChar(80)
-  profileImageUrl String? @db.VarChar(255)
-  coverImageUrl   String? @db.VarChar(255)
-  passwordHash String    @db.VarChar(255)
-  folders      Folder[]
-  posts        Post[]
-  comments     Comment[]
-  sessions     Session[]
-  vectorIndexes PostVectorIndex[]
-  aiRequestLogs AiRequestLog[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                           String                       @id @default(cuid())
+  email                        String                       @unique @db.VarChar(191)
+  username                     String                       @unique @db.VarChar(30)
+  name                         String                       @db.VarChar(80)
+  intro                        String?                      @db.VarChar(50)
+  blogTitle                    String                       @default("AiJinhoBlog") @db.VarChar(80)
+  profileImageUrl              String?                      @db.VarChar(255)
+  coverImageUrl                String?                      @db.VarChar(255)
+  passwordHash                 String                       @db.VarChar(255)
+  folders                      Folder[]
+  posts                        Post[]
+  comments                     Comment[]
+  sessions                     Session[]
+  vectorIndexes                PostVectorIndex[]
+  dropboxMarkdownDocuments     DropboxMarkdownDocument[]
+  dropboxMarkdownVectorIndexes DropboxMarkdownVectorIndex[]
+  aiRequestLogs                AiRequestLog[]
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime                     @updatedAt
 }
 
 model Session {
@@ -64,23 +66,23 @@ enum AiRequestStatus {
 }
 
 model Post {
-  id          String         @id @default(cuid())
-  title       String         @db.VarChar(160)
-  excerpt     String?        @db.VarChar(280)
-  content     String         @db.Text
-  status      PostStatus     @default(PUBLISHED)
-  visibility  PostVisibility @default(PUBLIC)
-  publishedAt DateTime?
-  authorId    String
-  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  folderId    String?
-  folder      Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  comments    Comment[]
-  tags        PostTag[]
-  vectorIndex PostVectorIndex?
+  id            String           @id @default(cuid())
+  title         String           @db.VarChar(160)
+  excerpt       String?          @db.VarChar(280)
+  content       String           @db.Text
+  status        PostStatus       @default(PUBLISHED)
+  visibility    PostVisibility   @default(PUBLIC)
+  publishedAt   DateTime?
+  authorId      String
+  author        User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  folderId      String?
+  folder        Folder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  comments      Comment[]
+  tags          PostTag[]
+  vectorIndex   PostVectorIndex?
   aiRequestLogs AiRequestLog[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   @@index([authorId, createdAt])
   @@index([authorId, status, visibility, createdAt])
@@ -153,24 +155,70 @@ model PostVectorIndex {
   @@index([updatedAt])
 }
 
+model DropboxMarkdownDocument {
+  id             String                      @id @default(cuid())
+  ownerId        String
+  owner          User                        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  dropboxFileId  String                      @db.VarChar(191)
+  name           String                      @db.VarChar(255)
+  pathDisplay    String                      @db.VarChar(512)
+  pathLower      String                      @db.VarChar(512)
+  rev            String?                     @db.VarChar(100)
+  serverModified DateTime?
+  size           Int?
+  contentHash    String?                     @db.Char(64)
+  markdown       String                      @db.LongText
+  plainText      String                      @db.LongText
+  vectorIndex    DropboxMarkdownVectorIndex?
+  aiRequestLogs  AiRequestLog[]
+  lastSyncedAt   DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@unique([ownerId, pathLower])
+  @@index([ownerId, updatedAt])
+}
+
+model DropboxMarkdownVectorIndex {
+  id            String                  @id @default(cuid())
+  documentId    String                  @unique
+  document      DropboxMarkdownDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User                    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  status        VectorIndexStatus       @default(PENDING)
+  contentHash   String?                 @db.Char(64)
+  chunkCount    Int                     @default(0)
+  chunkIds      Json?
+  errorMessage  String?                 @db.Text
+  lastIndexedAt DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([ownerId, status])
+  @@index([updatedAt])
+}
+
 model AiRequestLog {
-  id           String          @id @default(cuid())
-  purpose      String          @db.VarChar(80)
-  provider     String          @db.VarChar(40)
-  model        String?         @db.VarChar(100)
-  status       AiRequestStatus
-  inputTokens  Int?
-  outputTokens Int?
-  totalTokens  Int?
-  errorMessage String?         @db.Text
-  metadata     Json?
-  postId       String?
-  post         Post?           @relation(fields: [postId], references: [id], onDelete: SetNull)
-  userId       String?
-  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt    DateTime        @default(now())
+  id                        String                   @id @default(cuid())
+  purpose                   String                   @db.VarChar(80)
+  provider                  String                   @db.VarChar(40)
+  model                     String?                  @db.VarChar(100)
+  status                    AiRequestStatus
+  inputTokens               Int?
+  outputTokens              Int?
+  totalTokens               Int?
+  errorMessage              String?                  @db.Text
+  metadata                  Json?
+  postId                    String?
+  post                      Post?                    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  dropboxMarkdownDocumentId String?
+  dropboxMarkdownDocument   DropboxMarkdownDocument? @relation(fields: [dropboxMarkdownDocumentId], references: [id], onDelete: SetNull)
+  userId                    String?
+  user                      User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt                 DateTime                 @default(now())
 
   @@index([postId, createdAt])
+  @@index([dropboxMarkdownDocumentId, createdAt])
   @@index([userId, createdAt])
   @@index([purpose, status, createdAt])
 }
