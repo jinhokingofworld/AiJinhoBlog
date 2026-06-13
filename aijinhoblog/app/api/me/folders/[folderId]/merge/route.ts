@@ -1,4 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/folders";
 import { fail, json, readJson } from "@/backend/http";
 import { prisma } from "@/backend/prisma";
@@ -22,7 +26,8 @@ async function readOwnedFolder(folderId: string, ownerId: string) {
 }
 
 export async function POST(request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -33,11 +38,11 @@ export async function POST(request: Request, { params }: Params) {
   const parsed = parseFolderMergePayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   if (parsed.value.targetFolderId === folderId) {
-    return fail("같은 폴더로 병합할 수 없습니다.", 400);
+    return failWithRefreshedSession("같은 폴더로 병합할 수 없습니다.", auth, 400);
   }
 
   const [sourceFolder, targetFolder] = await Promise.all([
@@ -46,7 +51,7 @@ export async function POST(request: Request, { params }: Params) {
   ]);
 
   if (!sourceFolder || !targetFolder) {
-    return fail("폴더를 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("폴더를 찾을 수 없습니다.", auth, 404);
   }
 
   await prisma.$transaction([
@@ -76,5 +81,7 @@ export async function POST(request: Request, { params }: Params) {
 
   await ensureDefaultFolder(user.id);
   const folders = await listFolders(user.id);
-  return json({ folders: folders.map(serializeFolder) });
+  const response = json({ folders: folders.map(serializeFolder) });
+
+  return attachRefreshedSessionCookie(response, auth);
 }

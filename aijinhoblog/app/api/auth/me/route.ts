@@ -4,7 +4,7 @@ import { json } from "@/backend/http";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getCurrentUser();
+  const user = await getCurrentUser({ allowRefreshToken: false });
 
   if (user) {
     return json({ user });

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { BlogHeroHeader, ProfileSummaryCard } from "@/frontend/components/blog-components";
 import { PageFrame } from "@/frontend/components/page-frame";
 import { CommentsPanel } from "@/frontend/features/comments/comments-panel";
+import { PostOwnerActions } from "@/frontend/features/posts/post-owner-actions";
 import { getCurrentUser } from "@/backend/auth";
 import {
   canReadPost,
@@ -80,7 +81,6 @@ export default async function PostDetailPage({ params }: Props) {
             author: {
               select: {
                 id: true,
-                email: true,
                 username: true,
                 name: true,
               },
@@ -143,6 +143,13 @@ export default async function PostDetailPage({ params }: Props) {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
         <article className="border border-zinc-300 bg-white p-6">
+          <Link
+            className="mb-5 inline-flex border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
+            href={`/${profile.username}`}
+          >
+            글 목록
+          </Link>
+
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -163,12 +170,21 @@ export default async function PostDetailPage({ params }: Props) {
               </p>
             </div>
             {isOwner ? (
-              <Link
-                className="border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
-                href={`/${profile.username}/posts/${serializedPost.id}/edit`}
-              >
-                수정
-              </Link>
+              <PostOwnerActions
+                post={{
+                  id: serializedPost.id,
+                  title: serializedPost.title,
+                  excerpt: serializedPost.excerpt,
+                  content: serializedPost.content,
+                  status: serializedPost.status,
+                  visibility: serializedPost.visibility,
+                  folderId: serializedPost.folderId,
+                  tags: serializedPost.tags.map((tag) => ({
+                    name: tag.name,
+                  })),
+                }}
+                username={profile.username}
+              />
             ) : null}
           </div>
 
@@ -180,12 +196,13 @@ export default async function PostDetailPage({ params }: Props) {
                 </span>
               ) : null}
               {serializedPost.tags.map((tag) => (
-                <span
-                  className="border border-zinc-300 px-2 py-1 text-xs text-zinc-600"
+                <Link
+                  className="border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
+                  href={`/${profile.username}?query=${encodeURIComponent(`#${tag.name}`)}`}
                   key={tag.id}
                 >
                   #{tag.name}
-                </span>
+                </Link>
               ))}
             </div>
           ) : null}
@@ -215,7 +232,7 @@ export default async function PostDetailPage({ params }: Props) {
         </article>
 
         <aside className="space-y-6">
-          <ProfileSummaryCard imageSize={220} profile={profile} />
+          <ProfileSummaryCard imageSize={220} mode="detail" profile={profile} />
 
           <section className="border border-zinc-300 bg-white p-4">
             <h2 className="text-sm font-semibold">최근 글</h2>

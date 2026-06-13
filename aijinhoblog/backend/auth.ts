@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { createJwt, createSessionToken, hashSessionToken, verifyJwt } from "@/backend/auth-crypto";
+import { fail, json } from "@/backend/http";
 import { prisma } from "@/backend/prisma";
 
 export const ACCESS_TOKEN_COOKIE = "aij_access";
@@ -16,6 +17,8 @@ const userSelect = {
   username: true,
   name: true,
 } as const;
+
+type SessionTokens = Awaited<ReturnType<typeof createUserSession>>;
 
 function createExpiresAt(ttlMs: number) {
   return new Date(Date.now() + ttlMs);
@@ -98,20 +101,104 @@ function readUserIdFromAccessToken(token: string | undefined) {
   return payload.sub;
 }
 
-export async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const userId = readUserIdFromAccessToken(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value);
-
-  if (!userId) {
+async function readUserFromRefreshToken(token: string | undefined) {
+  if (!token) {
     return null;
   }
 
-  return prisma.user.findUnique({
+  const payload = verifyJwt(token);
+
+  if (payload?.type !== "refresh" || typeof payload.sub !== "string") {
+    return null;
+  }
+
+  const session = await prisma.session.findUnique({
     where: {
-      id: userId,
+      tokenHash: hashSessionToken(token),
     },
-    select: userSelect,
+    include: {
+      user: {
+        select: userSelect,
+      },
+    },
   });
+
+  if (!session) {
+    return null;
+  }
+
+  if (session.expiresAt.getTime() <= Date.now()) {
+    await prisma.session.delete({ where: { id: session.id } }).catch(() => null);
+    return null;
+  }
+
+  return session.user;
+}
+
+export async function getCurrentUser(options: { allowRefreshToken?: boolean } = {}) {
+  const allowRefreshToken = options.allowRefreshToken ?? true;
+  const cookieStore = await cookies();
+  const userId = readUserIdFromAccessToken(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value);
+
+  if (userId) {
+    return prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: userSelect,
+    });
+  }
+
+  if (!allowRefreshToken) {
+    return null;
+  }
+
+  return readUserFromRefreshToken(cookieStore.get(REFRESH_TOKEN_COOKIE)?.value);
+}
+
+export async function getCurrentUserOrRefresh() {
+  const user = await getCurrentUser({ allowRefreshToken: false });
+
+  if (user) {
+    return {
+      user,
+      tokens: null,
+    };
+  }
+
+  const refreshed = await refreshUserSession();
+
+  return {
+    user: refreshed?.user ?? null,
+    tokens: refreshed?.tokens ?? null,
+  };
+}
+
+export function attachRefreshedSessionCookie(
+  response: NextResponse,
+  auth: { tokens: SessionTokens | null },
+) {
+  if (auth.tokens) {
+    attachSessionCookie(response, auth.tokens);
+  }
+
+  return response;
+}
+
+export function jsonWithRefreshedSession<T>(
+  data: T,
+  auth: { tokens: SessionTokens | null },
+  status = 200,
+) {
+  return attachRefreshedSessionCookie(json(data, status), auth);
+}
+
+export function failWithRefreshedSession(
+  message: string,
+  auth: { tokens: SessionTokens | null },
+  status = 400,
+) {
+  return attachRefreshedSessionCookie(fail(message, status), auth);
 }
 
 export async function refreshUserSession() {

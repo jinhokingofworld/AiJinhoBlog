@@ -1,4 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { fail, json, readJson } from "@/backend/http";
 import { profileSelect, serializeProfile } from "@/backend/profile";
 import { prisma } from "@/backend/prisma";
@@ -7,7 +11,8 @@ import { parseProfilePayload } from "@/backend/validation";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -17,7 +22,7 @@ export async function PATCH(request: Request) {
   const parsed = parseProfilePayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   const updated = await prisma.user.update({
@@ -28,5 +33,7 @@ export async function PATCH(request: Request) {
     select: profileSelect,
   });
 
-  return json({ profile: serializeProfile(updated) });
+  const response = json({ profile: serializeProfile(updated) });
+
+  return attachRefreshedSessionCookie(response, auth);
 }

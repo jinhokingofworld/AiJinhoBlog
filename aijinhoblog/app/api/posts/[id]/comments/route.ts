@@ -1,4 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { fail, json, readJson } from "@/backend/http";
 import { canReadPost, serializeComment } from "@/backend/posts";
 import { prisma } from "@/backend/prisma";
@@ -13,7 +17,8 @@ type Params = {
 };
 
 export async function POST(request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -24,7 +29,7 @@ export async function POST(request: Request, { params }: Params) {
   const parsed = parseCommentPayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   const post = await prisma.post.findUnique({
@@ -40,7 +45,7 @@ export async function POST(request: Request, { params }: Params) {
   });
 
   if (!post || !canReadPost(post, user.id)) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
 
   const comment = await prisma.comment.create({
@@ -53,7 +58,6 @@ export async function POST(request: Request, { params }: Params) {
       author: {
         select: {
           id: true,
-          email: true,
           username: true,
           name: true,
         },
@@ -61,5 +65,7 @@ export async function POST(request: Request, { params }: Params) {
     },
   });
 
-  return json({ comment: serializeComment(comment) }, 201);
+  const response = json({ comment: serializeComment(comment) }, 201);
+
+  return attachRefreshedSessionCookie(response, auth);
 }

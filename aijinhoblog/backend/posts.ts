@@ -11,7 +11,6 @@ export const postSummaryInclude = {
   author: {
     select: {
       id: true,
-      email: true,
       username: true,
       name: true,
     },
@@ -41,7 +40,6 @@ export const postDetailInclude = {
       author: {
         select: {
           id: true,
-          email: true,
           username: true,
           name: true,
         },
@@ -62,7 +60,6 @@ type TagRecord = {
 
 type AuthorRecord = {
   id: string;
-  email: string;
   username: string;
   name: string;
 };

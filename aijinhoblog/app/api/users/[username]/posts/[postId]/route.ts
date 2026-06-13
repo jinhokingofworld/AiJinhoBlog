@@ -1,5 +1,9 @@
-import { getCurrentUser } from "@/backend/auth";
-import { fail, json } from "@/backend/http";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
+import { json } from "@/backend/http";
 import { canReadPost, postDetailInclude, serializePost } from "@/backend/posts";
 import { prisma } from "@/backend/prisma";
 
@@ -14,8 +18,8 @@ type Params = {
 
 export async function GET(_request: Request, { params }: Params) {
   const { username, postId } = await params;
-  const [currentUser, post] = await Promise.all([
-    getCurrentUser(),
+  const [auth, post] = await Promise.all([
+    getCurrentUserOrRefresh(),
     prisma.post.findFirst({
       where: {
         id: postId,
@@ -26,10 +30,12 @@ export async function GET(_request: Request, { params }: Params) {
       include: postDetailInclude,
     }),
   ]);
+  const currentUser = auth.user;
 
   if (!post || !canReadPost(post, currentUser?.id)) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
+  const response = json({ post: serializePost(post) });
 
-  return json({ post: serializePost(post) });
+  return attachRefreshedSessionCookie(response, auth);
 }

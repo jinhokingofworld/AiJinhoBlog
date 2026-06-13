@@ -1,4 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { ensureDefaultFolder, listFolders, moveFolder, serializeFolder } from "@/backend/folders";
 import { fail, json, readJson } from "@/backend/http";
 import { prisma } from "@/backend/prisma";
@@ -22,7 +26,8 @@ async function readOwnedFolder(folderId: string, ownerId: string) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -35,29 +40,31 @@ export async function PATCH(request: Request, { params }: Params) {
     const parsed = parseFolderMovePayload(payload);
 
     if (!parsed.ok) {
-      return fail(parsed.error, 400);
+      return failWithRefreshedSession(parsed.error, auth, 400);
     }
 
     const moved = await moveFolder(user.id, folderId, parsed.value.direction);
 
     if (!moved.ok) {
-      return fail(moved.error, 404);
+      return failWithRefreshedSession(moved.error, auth, 404);
     }
 
     const folders = await listFolders(user.id);
-    return json({ folders: folders.map(serializeFolder) });
+    const response = json({ folders: folders.map(serializeFolder) });
+
+    return attachRefreshedSessionCookie(response, auth);
   }
 
   const parsed = parseFolderPayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   const folder = await readOwnedFolder(folderId, user.id);
 
   if (!folder) {
-    return fail("폴더를 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("폴더를 찾을 수 없습니다.", auth, 404);
   }
 
   try {
@@ -70,15 +77,18 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
   } catch {
-    return fail("이미 같은 이름의 폴더가 있습니다.", 409);
+    return failWithRefreshedSession("이미 같은 이름의 폴더가 있습니다.", auth, 409);
   }
 
   const folders = await listFolders(user.id);
-  return json({ folders: folders.map(serializeFolder) });
+  const response = json({ folders: folders.map(serializeFolder) });
+
+  return attachRefreshedSessionCookie(response, auth);
 }
 
 export async function DELETE(request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -91,7 +101,7 @@ export async function DELETE(request: Request, { params }: Params) {
   const folder = await readOwnedFolder(folderId, user.id);
 
   if (!folder) {
-    return fail("폴더를 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("폴더를 찾을 수 없습니다.", auth, 404);
   }
 
   const folderCount = await prisma.folder.count({
@@ -101,7 +111,7 @@ export async function DELETE(request: Request, { params }: Params) {
   });
 
   if (folderCount <= 1) {
-    return fail("마지막 폴더는 삭제할 수 없습니다.", 400);
+    return failWithRefreshedSession("마지막 폴더는 삭제할 수 없습니다.", auth, 400);
   }
 
   if (mode === "delete-posts") {
@@ -120,13 +130,13 @@ export async function DELETE(request: Request, { params }: Params) {
     ]);
   } else {
     if (!targetFolderId || targetFolderId === folder.id) {
-      return fail("게시글을 이동할 대상 폴더가 필요합니다.", 400);
+      return failWithRefreshedSession("게시글을 이동할 대상 폴더가 필요합니다.", auth, 400);
     }
 
     const targetFolder = await readOwnedFolder(targetFolderId, user.id);
 
     if (!targetFolder) {
-      return fail("대상 폴더를 찾을 수 없습니다.", 404);
+      return failWithRefreshedSession("대상 폴더를 찾을 수 없습니다.", auth, 404);
     }
 
     await prisma.$transaction([
@@ -149,5 +159,7 @@ export async function DELETE(request: Request, { params }: Params) {
 
   await ensureDefaultFolder(user.id);
   const folders = await listFolders(user.id);
-  return json({ folders: folders.map(serializeFolder) });
+  const response = json({ folders: folders.map(serializeFolder) });
+
+  return attachRefreshedSessionCookie(response, auth);
 }

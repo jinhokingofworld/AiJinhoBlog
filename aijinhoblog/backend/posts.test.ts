@@ -9,6 +9,8 @@ import {
   normalizePostSort,
   normalizePostTagFilter,
   POST_PAGE_SIZE,
+  postDetailInclude,
+  postSummaryInclude,
   resolvePublishedAt,
 } from "@/backend/posts";
 
@@ -123,5 +125,18 @@ describe("posts", () => {
     expect(resolvePublishedAt("PUBLISHED", current, next)).toBe(current);
     expect(resolvePublishedAt("PUBLISHED", null, next)).toBe(next);
     expect(resolvePublishedAt("DRAFT", current, next)).toBeNull();
+  });
+
+  it("does not include author email in public post selections", () => {
+    expect(postSummaryInclude.author.select).toEqual({
+      id: true,
+      username: true,
+      name: true,
+    });
+    expect(postDetailInclude.comments.include.author.select).toEqual({
+      id: true,
+      username: true,
+      name: true,
+    });
   });
 });

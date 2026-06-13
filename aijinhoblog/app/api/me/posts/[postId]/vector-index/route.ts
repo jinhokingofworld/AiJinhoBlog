@@ -1,4 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { syncPostVectorIndex } from "@/backend/ai-indexing";
 import { fail, json } from "@/backend/http";
 import { prisma } from "@/backend/prisma";
@@ -32,7 +36,8 @@ async function readOwnedPost(postId: string, userId: string) {
 }
 
 export async function GET(_request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -42,7 +47,7 @@ export async function GET(_request: Request, { params }: Params) {
   const post = await readOwnedPost(postId, user.id);
 
   if (!post) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
 
   const logs = await prisma.aiRequestLog.findMany({
@@ -56,14 +61,17 @@ export async function GET(_request: Request, { params }: Params) {
     take: 10,
   });
 
-  return json({
+  const response = json({
     vectorIndex: post.vectorIndex,
     logs,
   });
+
+  return attachRefreshedSessionCookie(response, auth);
 }
 
 export async function POST(_request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -73,12 +81,13 @@ export async function POST(_request: Request, { params }: Params) {
   const post = await readOwnedPost(postId, user.id);
 
   if (!post) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
+    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
 
   const aiPipeline = await syncPostVectorIndex(post);
-
-  return json({
+  const response = json({
     aiPipeline,
   });
+
+  return attachRefreshedSessionCookie(response, auth);
 }

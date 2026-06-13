@@ -120,6 +120,36 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     router.refresh();
   }
 
+  async function deletePost() {
+    if (!initialPost) {
+      return;
+    }
+
+    if (!window.confirm("게시글을 삭제하시겠습니까? 삭제한 글은 되돌릴 수 없습니다.")) {
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    const response = await fetch(`/api/me/posts/${initialPost.id}`, {
+      method: "DELETE",
+    });
+    const result = (await response.json()) as {
+      error?: string;
+    };
+
+    setSaving(false);
+
+    if (!response.ok) {
+      setError(result.error ?? "게시글 삭제에 실패했습니다.");
+      return;
+    }
+
+    router.push(`/${username}`);
+    router.refresh();
+  }
+
   function cancelEdit() {
     if (
       isDirty &&
@@ -238,30 +268,44 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
         <p className="border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       ) : null}
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <button
-          className="border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
-          disabled={saving}
-          onClick={cancelEdit}
-          type="button"
-        >
-          취소
-        </button>
-        <button
-          className="border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
-          disabled={saving}
-          onClick={() => void savePost("DRAFT")}
-          type="button"
-        >
-          임시저장
-        </button>
-        <button
-          className="bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          disabled={saving}
-          type="submit"
-        >
-          게시하기
-        </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {mode === "edit" ? (
+          <button
+            className="w-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:text-zinc-300 sm:w-auto"
+            disabled={saving}
+            onClick={() => void deletePost()}
+            type="button"
+          >
+            삭제
+          </button>
+        ) : (
+          <span className="hidden sm:block" />
+        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            className="border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+            disabled={saving}
+            onClick={cancelEdit}
+            type="button"
+          >
+            취소
+          </button>
+          <button
+            className="border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+            disabled={saving}
+            onClick={() => void savePost("DRAFT")}
+            type="button"
+          >
+            임시저장
+          </button>
+          <button
+            className="bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            disabled={saving}
+            type="submit"
+          >
+            게시하기
+          </button>
+        </div>
       </div>
     </form>
   );

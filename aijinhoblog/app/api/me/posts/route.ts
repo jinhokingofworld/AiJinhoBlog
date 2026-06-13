@@ -1,5 +1,8 @@
-import { getCurrentUser } from "@/backend/auth";
-import { syncPostVectorIndex } from "@/backend/ai-indexing";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth";
 import { resolvePostFolderId } from "@/backend/folders";
 import { fail, json, readJson } from "@/backend/http";
 import {
@@ -14,7 +17,8 @@ import { parsePostPayload } from "@/backend/validation";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -24,13 +28,13 @@ export async function POST(request: Request) {
   const parsed = parsePostPayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   const folder = await resolvePostFolderId(user.id, parsed.value.folderId);
 
   if (!folder.ok) {
-    return fail(folder.error, 404);
+    return failWithRefreshedSession(folder.error, auth, 404);
   }
 
   const post = await prisma.post.create({
@@ -49,7 +53,7 @@ export async function POST(request: Request) {
     },
     include: postSummaryInclude,
   });
-  const aiPipeline = await syncPostVectorIndex(post);
+  const response = json({ post: serializePost(post) }, 201);
 
-  return json({ post: serializePost(post), aiPipeline }, 201);
+  return attachRefreshedSessionCookie(response, auth);
 }

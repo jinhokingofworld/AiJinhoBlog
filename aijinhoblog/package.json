@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
     "ai:backfill": "tsx scripts/backfill-vector-index.ts",
+    "dropbox:sync": "tsx scripts/sync-dropbox-markdown.ts",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },
