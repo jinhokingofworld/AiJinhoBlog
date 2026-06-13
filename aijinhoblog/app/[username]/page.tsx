@@ -479,7 +479,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               ) : null}
             </div>
             {totalPages > 1 ? (
-              <nav className="flex flex-wrap items-center justify-end gap-2 text-sm">
+              <nav className="flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-end">
                 <Link
                   aria-label="이전 페이지"
                   aria-disabled={page <= 1}
