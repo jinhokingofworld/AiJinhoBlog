@@ -334,18 +334,18 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
         </section>
 
         <section className="mt-3 border border-zinc-300 bg-white p-4 sm:p-6">
-          <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-4 border-b border-zinc-200 pb-4 sm:flex sm:flex-col sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
               <h2 className="text-lg font-semibold">글 목록</h2>
               <p className="mt-1 text-sm text-zinc-500">
                 총 {total}개{hasActiveFilters ? " · 필터 적용 중" : ""}
               </p>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <div className="contents sm:flex sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <form
                 action={`/${profile.username}`}
-                className="order-1 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:w-auto sm:grid-cols-[16rem_auto_auto] md:grid-cols-[18rem_auto_auto] lg:order-2 lg:grid-cols-[20rem_auto_auto]"
+                className="order-3 col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:order-1 sm:col-span-1 sm:w-auto sm:grid-cols-[16rem_auto_auto] md:grid-cols-[18rem_auto_auto] lg:order-2 lg:grid-cols-[20rem_auto_auto]"
                 method="get"
               >
                 <input name="sort" type="hidden" value={sort} />
@@ -382,7 +382,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   </Link>
                 ) : null}
               </form>
-              <div className="order-2 inline-flex w-fit border border-zinc-300 text-sm lg:order-1">
+              <div className="order-2 inline-flex w-fit justify-self-end border border-zinc-300 text-sm sm:order-2 lg:order-1">
                 <Link
                   className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
                   href={createPageHref(profile.username, {
