@@ -88,17 +88,34 @@ function createPostInput(input: {
   return parsed.value;
 }
 
-export async function resolveMcpOwner(input: OwnerInput = {}) {
+export function createMcpOwnerWhere(input: OwnerInput = {}) {
   const ownerId = input.ownerId ?? process.env.AIJINHOBLOG_MCP_OWNER_ID;
   const ownerUsername = input.ownerUsername ?? process.env.AIJINHOBLOG_MCP_OWNER_USERNAME;
   const ownerEmail = input.ownerEmail ?? process.env.AIJINHOBLOG_MCP_OWNER_EMAIL;
 
+  if (!ownerId && !ownerUsername && !ownerEmail) {
+    return null;
+  }
+
+  return {
+    ...(ownerId ? { id: ownerId } : {}),
+    ...(ownerUsername ? { username: ownerUsername } : {}),
+    ...(ownerEmail ? { email: ownerEmail } : {}),
+  };
+}
+
+export async function resolveMcpOwner(input: OwnerInput = {}) {
+  const where = createMcpOwnerWhere(input);
+
+  if (!where) {
+    throw new PostServiceError(
+      "MCP owner 식별자가 필요합니다. ownerUsername, ownerEmail, ownerId 또는 AIJINHOBLOG_MCP_OWNER_* 환경 변수를 설정해주세요.",
+      400,
+    );
+  }
+
   const user = await prisma.user.findFirst({
-    where: {
-      ...(ownerId ? { id: ownerId } : {}),
-      ...(ownerUsername ? { username: ownerUsername } : {}),
-      ...(ownerEmail ? { email: ownerEmail } : {}),
-    },
+    where,
     select: {
       email: true,
       id: true,

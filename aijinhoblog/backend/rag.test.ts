@@ -97,16 +97,45 @@ function createVectorStore(): QueryableVectorStore {
 describe("rag search and answer", () => {
   it("searches post and Dropbox vectors and hydrates source metadata", async () => {
     const { prisma } = createPrismaMock();
+    const vectorStore = createVectorStore();
     const results = await searchKnowledgeSources({
       embeddingClient: createEmbeddingClient(),
       ownerId: "user-1",
       prisma: prisma as never,
       query: "AI 블로그",
       username: "jinho",
-      vectorStore: createVectorStore(),
+      vectorStore,
     });
 
     expect(results).toHaveLength(2);
+    expect(vectorStore.query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          authorId: "user-1",
+        },
+      }),
+    );
+    expect(vectorStore.query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ownerId: "user-1",
+        },
+      }),
+    );
+    expect(prisma.post.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          authorId: "user-1",
+        }),
+      }),
+    );
+    expect(prisma.dropboxMarkdownDocument.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          ownerId: "user-1",
+        }),
+      }),
+    );
     expect(results[0]).toMatchObject({
       chunk: "Dropbox chunk",
       source: {
