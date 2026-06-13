@@ -288,7 +288,16 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               <p className="mt-3 text-sm leading-6 text-zinc-600">{profile.intro}</p>
             </section>
 
-            <section className="mt-3 min-h-[300px] border border-zinc-950 bg-white p-2">
+            {isOwner ? (
+              <Link
+                className="mt-3 block border border-zinc-300 bg-white px-3 py-2 text-center text-base font-semibold hover:bg-zinc-100"
+                href={`/${profile.username}/posts/new`}
+              >
+                글쓰기
+              </Link>
+            ) : null}
+
+            <section className="mt-3 border border-zinc-300 bg-white p-2">
               <details className="relative">
                 <summary className="flex cursor-pointer list-none items-center justify-between border border-zinc-300 px-3 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
                   <span>폴더</span>
@@ -527,8 +536,8 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 )}
               </div>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-center">
+                <div className="lg:hidden">
                   {isOwner ? (
                     <Link
                       className="block border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:w-40"
@@ -539,7 +548,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   ) : null}
                 </div>
                 {totalPages > 1 ? (
-                  <nav className="flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-end">
+                  <nav className="flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-end lg:justify-center">
                     <Link
                       aria-label="이전 페이지"
                       aria-disabled={page <= 1}
