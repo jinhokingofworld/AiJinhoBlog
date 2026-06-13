@@ -16,7 +16,6 @@ import {
   createPostSummary,
   normalizePostSort,
   normalizePostSearchQuery,
-  normalizePostTagFilter,
   type PostListSort,
   POST_PAGE_SIZE,
 } from "@/lib/posts";
@@ -35,7 +34,6 @@ type Props = {
     page?: string;
     query?: string;
     sort?: string;
-    tag?: string;
   }>;
 };
 
@@ -44,13 +42,9 @@ type BlogListHrefOptions = {
   page: number;
   query?: string | null;
   sort: PostListSort;
-  tag?: string | null;
 };
 
-function createPageHref(
-  username: string,
-  { folderId, page, query, sort, tag }: BlogListHrefOptions,
-) {
+function createPageHref(username: string, { folderId, page, query, sort }: BlogListHrefOptions) {
   const params = new URLSearchParams({
     page: String(page),
     sort,
@@ -62,10 +56,6 @@ function createPageHref(
 
   if (query) {
     params.set("query", query);
-  }
-
-  if (tag) {
-    params.set("tag", tag);
   }
 
   return `/${username}?${params.toString()}`;
@@ -110,7 +100,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
   });
   const sort = normalizePostSort(query.sort ?? null);
   const searchQuery = normalizePostSearchQuery(query.query);
-  const selectedTag = normalizePostTagFilter(query.tag);
   const selectedFolderId = query.folderId?.trim() || null;
   const [currentUser, blog] = await Promise.all([
     getCurrentUser(),
@@ -155,22 +144,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
       name: true,
     },
   });
-  const tags = await prisma.tag.findMany({
-    where: {
-      posts: {
-        some: {
-          post: createPostAccessWhere(blog.id, currentUser?.id),
-        },
-      },
-    },
-    orderBy: {
-      name: "asc",
-    },
-    select: {
-      id: true,
-      name: true,
-    },
-  });
   const visibleFolderIds = new Set(folders.map((folder) => folder.id));
 
   if (selectedFolderId && !visibleFolderIds.has(selectedFolderId)) {
@@ -178,7 +151,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
   }
 
   const where = createPostAccessWhere(blog.id, currentUser?.id);
-  Object.assign(where, createPostListFilterWhere({ query: searchQuery, tag: selectedTag }));
+  Object.assign(where, createPostListFilterWhere({ query: searchQuery }));
 
   if (selectedFolderId) {
     where.folderId = selectedFolderId;
@@ -205,18 +178,27 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
           name: true,
         },
       },
+      tags: {
+        select: {
+          tag: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
       createdAt: true,
     },
     skip: (page - 1) * POST_PAGE_SIZE,
     take: POST_PAGE_SIZE,
   });
   const pageNumbers = createPageWindow(page, totalPages);
-  const hasActiveFilters = Boolean(searchQuery || selectedTag || selectedFolderId);
+  const hasActiveFilters = Boolean(searchQuery || selectedFolderId);
   const selectedFolder = selectedFolderId
     ? folders.find((folder) => folder.id === selectedFolderId)
     : null;
   const selectedFolderLabel = selectedFolder?.name ?? "전체";
-  const selectedTagLabel = selectedTag ? `#${selectedTag}` : "전체";
   const menuLinkClass = "block px-4 py-3 text-sm font-medium hover:bg-zinc-100";
 
   return (
@@ -313,7 +295,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
         </section>
 
         <section className="mt-3 border border-zinc-300 bg-white p-4 sm:p-5">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3">
             <details className="relative">
               <summary className="flex cursor-pointer list-none items-center justify-between border border-zinc-300 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
                 <span>폴더</span>
@@ -328,7 +310,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     page: 1,
                     query: searchQuery,
                     sort,
-                    tag: selectedTag,
                   })}
                 >
                   전체
@@ -341,48 +322,10 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                       page: 1,
                       query: searchQuery,
                       sort,
-                      tag: selectedTag,
                     })}
                     key={folder.id}
                   >
                     {folder.name}
-                  </Link>
-                ))}
-              </div>
-            </details>
-
-            <details className="relative">
-              <summary className="flex cursor-pointer list-none items-center justify-between border border-zinc-300 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                <span>태그</span>
-                <span className="min-w-0 truncate font-normal text-zinc-600">
-                  {selectedTagLabel}
-                </span>
-              </summary>
-              <div className="absolute left-0 right-0 z-10 mt-1 max-h-64 overflow-auto border border-zinc-300 bg-white shadow-sm">
-                <Link
-                  className={`block px-4 py-3 text-sm ${selectedTag ? "hover:bg-zinc-50" : "bg-zinc-950 text-white"}`}
-                  href={createPageHref(profile.username, {
-                    folderId: selectedFolderId,
-                    page: 1,
-                    query: searchQuery,
-                    sort,
-                  })}
-                >
-                  전체
-                </Link>
-                {tags.map((tag) => (
-                  <Link
-                    className={`block px-4 py-3 text-sm ${selectedTag === tag.name ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                    href={createPageHref(profile.username, {
-                      folderId: selectedFolderId,
-                      page: 1,
-                      query: searchQuery,
-                      sort,
-                      tag: tag.name,
-                    })}
-                    key={tag.id}
-                  >
-                    #{tag.name}
                   </Link>
                 ))}
               </div>
@@ -408,7 +351,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     page: 1,
                     query: searchQuery,
                     sort: "latest",
-                    tag: selectedTag,
                   })}
                 >
                   최신순
@@ -420,7 +362,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     page: 1,
                     query: searchQuery,
                     sort: "oldest",
-                    tag: selectedTag,
                   })}
                 >
                   오래된순
@@ -435,7 +376,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 {selectedFolderId ? (
                   <input name="folderId" type="hidden" value={selectedFolderId} />
                 ) : null}
-                {selectedTag ? <input name="tag" type="hidden" value={selectedTag} /> : null}
                 <label className="sr-only" htmlFor="post-search">
                   글 검색
                 </label>
@@ -444,7 +384,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   defaultValue={searchQuery ?? ""}
                   id="post-search"
                   name="query"
-                  placeholder="제목, 요약 검색"
+                  placeholder="제목, 요약, #태그 검색"
                   type="search"
                 />
                 <button
@@ -460,7 +400,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                       folderId: selectedFolderId,
                       page: 1,
                       sort,
-                      tag: selectedTag,
                     })}
                   >
                     초기화
@@ -474,30 +413,51 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
             {posts.length ? (
               posts.map((post) => (
                 <Link
-                  className="block border border-zinc-300 px-4 py-4 hover:bg-zinc-50 sm:px-5"
+                  className="flex min-h-28 flex-col border border-zinc-300 px-4 py-4 hover:bg-zinc-50 sm:px-5"
                   href={`/${profile.username}/posts/${post.id}`}
                   key={post.id}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-semibold">{post.title}</h3>
-                    {isOwner && post.status === "DRAFT" ? (
-                      <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                        임시저장
-                      </span>
-                    ) : null}
-                    {isOwner && post.visibility === "PRIVATE" ? (
-                      <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
-                        비공개
-                      </span>
-                    ) : null}
+                  <div className="flex min-w-0 items-start gap-2">
+                    <h3
+                      className="min-w-0 flex-1 truncate text-lg font-semibold"
+                      title={post.title}
+                    >
+                      {post.title}
+                    </h3>
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                      {isOwner && post.status === "DRAFT" ? (
+                        <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                          임시저장
+                        </span>
+                      ) : null}
+                      {isOwner && post.visibility === "PRIVATE" ? (
+                        <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
+                          비공개
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600">
                     {createPostSummary(post.excerpt, post.content)}
                   </p>
-                  <p className="mt-3 text-xs text-zinc-500">
-                    {post.createdAt.toLocaleDateString("ko-KR")}
-                    {post.folder ? ` · ${post.folder.name}` : ""}
-                  </p>
+                  <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-3">
+                    <p className="text-xs text-zinc-500">
+                      {post.createdAt.toLocaleDateString("ko-KR")}
+                      {post.folder ? ` · ${post.folder.name}` : ""}
+                    </p>
+                    {post.tags.length ? (
+                      <div className="ml-auto flex flex-wrap justify-end gap-1">
+                        {post.tags.map(({ tag }) => (
+                          <span
+                            className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700"
+                            key={tag.id}
+                          >
+                            #{tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </Link>
               ))
             ) : (
@@ -529,7 +489,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     page: Math.max(1, page - 1),
                     query: searchQuery,
                     sort,
-                    tag: selectedTag,
                   })}
                 >
                   &lt;
@@ -543,7 +502,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                       page: pageNumber,
                       query: searchQuery,
                       sort,
-                      tag: selectedTag,
                     })}
                     key={pageNumber}
                   >
@@ -559,7 +517,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                     page: Math.min(totalPages, page + 1),
                     query: searchQuery,
                     sort,
-                    tag: selectedTag,
                   })}
                 >
                   &gt;
@@ -575,7 +532,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               {selectedFolderId ? (
                 <input name="folderId" type="hidden" value={selectedFolderId} />
               ) : null}
-              {selectedTag ? <input name="tag" type="hidden" value={selectedTag} /> : null}
               <label className="sr-only" htmlFor="post-search-bottom">
                 글 검색
               </label>
@@ -584,7 +540,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 defaultValue={searchQuery ?? ""}
                 id="post-search-bottom"
                 name="query"
-                placeholder="검색"
+                placeholder="검색 또는 #태그"
                 type="search"
               />
               <button

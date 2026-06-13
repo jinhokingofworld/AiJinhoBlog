@@ -45,6 +45,29 @@ describe("posts", () => {
     });
   });
 
+  it("creates tag filters from hashtag search queries", () => {
+    expect(createPostListFilterWhere({ query: "#blog" })).toEqual({
+      tags: {
+        some: {
+          tag: {
+            name: "blog",
+          },
+        },
+      },
+    });
+
+    expect(createPostListFilterWhere({ query: "AI #blog" })).toEqual({
+      OR: [{ title: { contains: "AI" } }, { excerpt: { contains: "AI" } }],
+      tags: {
+        some: {
+          tag: {
+            name: "blog",
+          },
+        },
+      },
+    });
+  });
+
   it("uses five posts as the default list page size", () => {
     expect(POST_PAGE_SIZE).toBe(5);
   });
