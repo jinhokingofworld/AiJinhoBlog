@@ -166,9 +166,72 @@ npm --prefix aijinhoblog run build
 
 ### 남은 실제 환경 검증
 
-아래 항목은 환경 조건이 맞지 않아 완료하지 못했다.
+아래 항목은 최초 보완 작업 시점에는 환경 조건이 맞지 않아 완료하지 못했다.
 
 - `OPENAI_API_KEY` 값이 비어 있어 실제 OpenAI embedding 호출 검증을 수행하지 못했다.
 - ChromaDB 컨테이너가 실행 중이지 않았고, `chromadb/chroma` 이미지 pull이 완료되지 않아 실제 ChromaDB upsert/delete 검증을 수행하지 못했다.
 
 Phase 3에 들어가기 전 실제 성공 경로를 확인하려면 `.env`의 `OPENAI_API_KEY` 값을 채우고 ChromaDB 컨테이너를 실행한 뒤 게시글 작성/수정/삭제 흐름을 다시 검증해야 한다.
+
+## Phase 2 실제 성공 경로 검증 완료
+
+작성일: 2026-06-13
+
+`.env`에 `OPENAI_API_KEY`가 설정된 것을 확인했고, ChromaDB 컨테이너를 실행한 뒤 실제 API 경로로 Phase 2 AI 데이터 파이프라인을 검증했다.
+
+### 환경 확인
+
+```bash
+docker compose ps
+curl -sS http://localhost:8000/api/v2/heartbeat
+```
+
+결과:
+
+- MySQL 컨테이너 healthy
+- ChromaDB 컨테이너 running
+- ChromaDB v2 heartbeat 응답 확인
+
+### 실제 API 검증
+
+검증 서버:
+
+```bash
+http://127.0.0.1:3000
+```
+
+검증 사용자:
+
+- `phase2real-mqbt5r08@example.com`
+
+검증 게시글:
+
+- `cmqbt5r8u0005ymr66k6ncs61`
+
+검증 결과:
+
+| 흐름                     | HTTP 상태 | AI 파이프라인 상태 | 추가 확인                                        |
+| ------------------------ | --------- | ------------------ | ------------------------------------------------ |
+| 회원가입                 | 201       | -                  | 성공                                             |
+| 로그인                   | 200       | -                  | session cookie 발급                              |
+| 게시글 작성              | 201       | `INDEXED`          | chunk 1개 저장                                   |
+| 작성 후 인덱싱 상태 조회 | 200       | `INDEXED`          | `PostVectorIndex.chunkCount = 1`                 |
+| 게시글 수정              | 200       | `INDEXED`          | content hash 변경 확인                           |
+| 수정 후 인덱싱 상태 조회 | 200       | `INDEXED`          | OpenAI embedding, Chroma upsert/delete 로그 확인 |
+| 게시글 삭제              | 200       | `DELETED`          | ChromaDB chunk 삭제 성공                         |
+
+content hash:
+
+- 작성 후: `cf073cea7582244092bd1ef6f061e4cbb4ba9d9602e6510fd72b5126e357b439`
+- 수정 후: `57805b83f1b61bd2fbe625f7820e16fd261d7b3a62d7dcc51cf45278ad770983`
+
+수정 후 최근 AI 로그:
+
+- `chromadb:POST_VECTOR_DELETE:SUCCESS`
+- `chromadb:POST_VECTOR_UPSERT:SUCCESS`
+- `openai:POST_EMBEDDING:SUCCESS`
+- `chromadb:POST_VECTOR_UPSERT:SUCCESS`
+
+### 결론
+
+Phase 2 누락 항목이었던 실제 OpenAI embedding 호출, ChromaDB upsert, 수정 시 이전 chunk 삭제, 삭제 시 ChromaDB chunk 삭제 경로를 모두 확인했다.

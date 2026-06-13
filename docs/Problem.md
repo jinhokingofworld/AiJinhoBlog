@@ -422,6 +422,12 @@ OpenAI key는 파일에 항목만 있고 값이 설정되지 않은 상태였다
 
 이번 작업에서는 실제 OpenAI 호출 검증과 ChromaDB 실서버 검증을 완료하지 못했다. 대신 ChromaDB adapter와 OpenAI adapter에 retry/timeout을 적용하고, 관련 단위 테스트와 build 검증을 우선 수행한다. 추후 `OPENAI_API_KEY` 값을 채우고 ChromaDB 이미지 pull이 완료되는 환경에서 실제 작성/수정/삭제 성공 경로를 다시 검증해야 한다.
 
+### 추가 해결
+
+이후 `.env`에 `OPENAI_API_KEY`가 설정된 것을 확인했고, `docker compose up -d chroma`로 ChromaDB 이미지를 pull하고 컨테이너를 실행했다. `http://localhost:8000/api/v2/heartbeat` 응답을 확인한 뒤 실제 Next API 경로로 회원가입, 로그인, 게시글 작성, 인덱싱 상태 조회, 게시글 수정, 게시글 삭제를 검증했다.
+
+검증 결과 게시글 작성과 수정은 `INDEXED`, 삭제는 `DELETED`로 응답했다. 수정 후 AI 작업 로그에는 `openai:POST_EMBEDDING:SUCCESS`, `chromadb:POST_VECTOR_UPSERT:SUCCESS`, `chromadb:POST_VECTOR_DELETE:SUCCESS`가 기록되어 실제 OpenAI embedding과 ChromaDB 저장/삭제 경로가 동작함을 확인했다.
+
 ## 31. tsx 실행기의 sandbox IPC 권한 문제
 
 ### 문제 정의
