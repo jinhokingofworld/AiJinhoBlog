@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 
 import {
+  EmbeddingProviderError,
   EmbeddingSkippedError,
   createOpenAIEmbeddingClient,
   type EmbeddingClient,
@@ -12,7 +13,9 @@ import {
   type IndexablePostText,
 } from "@/lib/ai-text";
 import {
+  ChromaVectorStoreError,
   createChromaVectorStore,
+  type VectorOperationResult,
   type VectorMetadata,
   type VectorStore,
 } from "@/lib/ai-vector-store";
@@ -46,8 +49,8 @@ function readChunkIds(value: unknown) {
     : [];
 }
 
-function createChunkId(postId: string, chunkIndex: number) {
-  return `post:${postId}:chunk:${chunkIndex}`;
+function createChunkId(postId: string, contentHash: string, chunkIndex: number) {
+  return `post:${postId}:hash:${contentHash.slice(0, 16)}:chunk:${chunkIndex}`;
 }
 
 function toVectorMetadata(
@@ -91,9 +94,13 @@ async function writeAiLog({
   status: "SUCCESS" | "SKIPPED" | "FAILED";
   totalTokens?: number | null;
 }) {
-  const logMetadata: Record<string, unknown> = {
-    ...(metadata ?? {}),
-  };
+  const logMetadata: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(metadata ?? {})) {
+    if (typeof value !== "undefined") {
+      logMetadata[key] = value;
+    }
+  }
 
   if (typeof chunkCount === "number") {
     logMetadata.chunkCount = chunkCount;
@@ -175,11 +182,13 @@ async function deleteExistingChunks({
     return;
   }
 
-  await vectorStore.delete(chunkIds);
+  const result = await vectorStore.delete(chunkIds);
   await writeAiLog({
     chunkCount: chunkIds.length,
     metadata: {
       chunkIds,
+      durationMs: result?.durationMs,
+      retryAttempts: result?.retryAttempts,
     },
     post,
     prisma,
@@ -187,12 +196,66 @@ async function deleteExistingChunks({
     purpose: "POST_VECTOR_DELETE",
     status: "SUCCESS",
   });
+
+  return result;
 }
 
 function buildFailureResult(error: unknown): Pick<VectorPipelineResult, "message" | "status"> {
   return {
     status: "FAILED",
     message: error instanceof Error ? error.message : "AI 데이터 파이프라인 처리에 실패했습니다.",
+  };
+}
+
+function getFailureLogContext(error: unknown) {
+  if (error instanceof EmbeddingProviderError) {
+    return {
+      metadata: {
+        durationMs: error.durationMs,
+        retryAttempts: error.retryAttempts,
+        status: error.status,
+      },
+      model: process.env.OPENAI_EMBEDDING_MODEL ?? null,
+      provider: "openai",
+      purpose: "POST_EMBEDDING",
+    };
+  }
+
+  if (error instanceof ChromaVectorStoreError) {
+    return {
+      metadata: {
+        durationMs: error.durationMs,
+        operation: error.operation,
+        retryAttempts: error.retryAttempts,
+        status: error.status,
+      },
+      model: process.env.CHROMA_COLLECTION ?? "blog_posts",
+      provider: "chromadb",
+      purpose:
+        error.operation === "delete"
+          ? "POST_VECTOR_DELETE"
+          : error.operation === "collection"
+            ? "POST_VECTOR_COLLECTION"
+            : "POST_VECTOR_UPSERT",
+    };
+  }
+
+  return {
+    metadata: {},
+    model: null,
+    provider: "pipeline",
+    purpose: "POST_VECTOR_SYNC",
+  };
+}
+
+function mergeUniqueChunkIds(...groups: string[][]) {
+  return [...new Set(groups.flat())];
+}
+
+function toVectorOperationMetadata(result: VectorOperationResult | void) {
+  return {
+    durationMs: result?.durationMs,
+    retryAttempts: result?.retryAttempts,
   };
 }
 
@@ -206,28 +269,32 @@ export async function syncPostVectorIndex(
   const indexText = buildPostIndexText(post);
   const chunks = splitTextIntoChunks(indexText);
   const contentHash = createPostContentHash(post);
-  const chunkIds = chunks.map((_, index) => createChunkId(post.id, index));
+  const chunkIds = chunks.map((_, index) => createChunkId(post.id, contentHash, index));
   const existing = await prisma.postVectorIndex.findUnique({
     where: {
       postId: post.id,
     },
     select: {
       chunkIds: true,
+      contentHash: true,
     },
   });
   const previousChunkIds = readChunkIds(existing?.chunkIds);
+  const previousContentHash = existing?.contentHash ?? undefined;
+  let failureChunkIds = previousChunkIds;
+  let failureContentHash = previousContentHash;
+  let failureChunkCount = previousChunkIds.length;
 
   try {
-    await deleteExistingChunks({
-      chunkIds: previousChunkIds,
-      post,
-      prisma,
-      vectorStore,
-    });
-
     if (!chunks.length) {
       const message = "인덱싱할 게시글 텍스트가 없어 벡터 저장을 건너뜁니다.";
 
+      await deleteExistingChunks({
+        chunkIds: previousChunkIds,
+        post,
+        prisma,
+        vectorStore,
+      });
       await writeVectorIndex({
         chunkCount: 0,
         chunkIds: [],
@@ -263,6 +330,10 @@ export async function syncPostVectorIndex(
     await writeAiLog({
       chunkCount: chunks.length,
       inputTokens: embeddingResult.usage.inputTokens,
+      metadata: {
+        durationMs: embeddingResult.durationMs,
+        retryAttempts: embeddingResult.retryAttempts,
+      },
       model: embeddingResult.model,
       post,
       prisma,
@@ -272,7 +343,7 @@ export async function syncPostVectorIndex(
       totalTokens: embeddingResult.usage.totalTokens,
     });
 
-    await vectorStore.upsert(
+    const upsertResult = await vectorStore.upsert(
       chunks.map((chunk, index) => ({
         id: chunkIds[index],
         embedding: embeddingResult.embeddings[index],
@@ -280,10 +351,14 @@ export async function syncPostVectorIndex(
         metadata: toVectorMetadata(post, index, contentHash),
       })),
     );
+    failureChunkIds = mergeUniqueChunkIds(chunkIds, previousChunkIds);
+    failureContentHash = contentHash;
+    failureChunkCount = failureChunkIds.length;
     await writeAiLog({
       chunkCount: chunks.length,
       metadata: {
         chunkIds,
+        ...toVectorOperationMetadata(upsertResult),
       },
       model: process.env.CHROMA_COLLECTION ?? "blog_posts",
       post,
@@ -291,6 +366,14 @@ export async function syncPostVectorIndex(
       provider: "chromadb",
       purpose: "POST_VECTOR_UPSERT",
       status: "SUCCESS",
+    });
+    const obsoleteChunkIds = previousChunkIds.filter((id) => !chunkIds.includes(id));
+
+    await deleteExistingChunks({
+      chunkIds: obsoleteChunkIds,
+      post,
+      prisma,
+      vectorStore,
     });
     await writeVectorIndex({
       chunkCount: chunks.length,
@@ -311,10 +394,12 @@ export async function syncPostVectorIndex(
     };
   } catch (error) {
     if (error instanceof EmbeddingSkippedError) {
+      const skippedContentHash = previousChunkIds.length ? previousContentHash : contentHash;
+
       await writeVectorIndex({
-        chunkCount: chunks.length,
-        chunkIds: [],
-        contentHash,
+        chunkCount: previousChunkIds.length,
+        chunkIds: previousChunkIds,
+        contentHash: skippedContentHash,
         errorMessage: error.message,
         lastIndexedAt: null,
         post,
@@ -335,18 +420,19 @@ export async function syncPostVectorIndex(
       return {
         status: "SKIPPED",
         message: error.message,
-        chunkCount: chunks.length,
-        chunkIds: [],
-        contentHash,
+        chunkCount: previousChunkIds.length,
+        chunkIds: previousChunkIds,
+        contentHash: skippedContentHash,
       };
     }
 
     const failure = buildFailureResult(error);
+    const failureContext = getFailureLogContext(error);
 
     await writeVectorIndex({
-      chunkCount: chunks.length,
-      chunkIds: [],
-      contentHash,
+      chunkCount: failureChunkCount,
+      chunkIds: failureChunkIds,
+      contentHash: failureContentHash,
       errorMessage: failure.message,
       lastIndexedAt: null,
       post,
@@ -356,19 +442,25 @@ export async function syncPostVectorIndex(
     await writeAiLog({
       chunkCount: chunks.length,
       errorMessage: failure.message,
-      model: process.env.OPENAI_EMBEDDING_MODEL ?? null,
+      metadata: {
+        ...failureContext.metadata,
+        attemptedChunkIds: chunkIds,
+        attemptedContentHash: contentHash,
+        preservedChunkIds: failureChunkIds,
+      },
+      model: failureContext.model,
       post,
       prisma,
-      provider: "pipeline",
-      purpose: "POST_VECTOR_SYNC",
+      provider: failureContext.provider,
+      purpose: failureContext.purpose,
       status: "FAILED",
     });
 
     return {
       ...failure,
-      chunkCount: chunks.length,
-      chunkIds: [],
-      contentHash,
+      chunkCount: failureChunkCount,
+      chunkIds: failureChunkIds,
+      contentHash: failureContentHash,
     };
   }
 }
@@ -419,17 +511,19 @@ export async function deletePostVectorIndex(
     };
   } catch (error) {
     const failure = buildFailureResult(error);
+    const failureContext = getFailureLogContext(error);
 
     await writeAiLog({
       chunkCount: chunkIds.length,
       errorMessage: failure.message,
       metadata: {
         chunkIds,
+        ...failureContext.metadata,
       },
       post,
       prisma,
-      provider: "pipeline",
-      purpose: "POST_VECTOR_DELETE",
+      provider: failureContext.provider,
+      purpose: failureContext.purpose,
       status: "FAILED",
     });
 

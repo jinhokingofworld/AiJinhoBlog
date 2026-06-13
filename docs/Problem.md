@@ -393,3 +393,45 @@ Next.js는 같은 프로젝트 디렉터리에서 이미 실행 중인 dev 서�
 ### 해결 방법
 
 기존 Next dev 서버 프로세스를 종료한 뒤 `next dev -p 3010`을 다시 실행했다. 이후 Phase 2 회원가입, 로그인, 게시글 생성, 벡터 인덱싱 상태 조회, 수동 재인덱싱, 수정, 삭제 API 흐름을 검증했다.
+
+## 29. npm install의 sandbox 네트워크 대기
+
+### 문제 정의
+
+Phase 2 보완 작업에서 Markdown parser와 backfill script 실행기를 추가하기 위해 `npm --prefix aijinhoblog install marked`를 기본 sandbox에서 실행했지만, 명령이 출력 없이 장시간 대기했다.
+
+### 발생 원인
+
+패키지 설치는 npm registry 네트워크 접근이 필요하다. 현재 기본 sandbox는 외부 네트워크 접근이 제한되어 있어 설치 명령이 진행되지 못한 것으로 판단했다.
+
+### 해결 방법
+
+멈춘 설치 명령을 중단한 뒤 권한 허용 컨텍스트에서 `npm --prefix aijinhoblog install marked`와 `npm --prefix aijinhoblog install -D tsx`를 다시 실행했다. 두 명령 모두 완료되어 `package.json`과 `package-lock.json`이 갱신되었다.
+
+## 30. Phase 2 실제 성공 경로 검증 환경 미충족
+
+### 문제 정의
+
+Phase 2 보완 작업 후 실제 OpenAI embedding과 ChromaDB upsert/delete 성공 경로를 검증하려 했지만, 로컬 `.env`의 `OPENAI_API_KEY` 값이 비어 있었고 ChromaDB 컨테이너도 실행 중이지 않았다.
+
+### 발생 원인
+
+OpenAI key는 파일에 항목만 있고 값이 설정되지 않은 상태였다. Docker에서는 MySQL 컨테이너만 healthy 상태였고, `docker compose up -d chroma`를 실행했지만 `chromadb/chroma` 이미지 pull 단계에서 장시간 완료되지 않았다.
+
+### 해결 방법
+
+이번 작업에서는 실제 OpenAI 호출 검증과 ChromaDB 실서버 검증을 완료하지 못했다. 대신 ChromaDB adapter와 OpenAI adapter에 retry/timeout을 적용하고, 관련 단위 테스트와 build 검증을 우선 수행한다. 추후 `OPENAI_API_KEY` 값을 채우고 ChromaDB 이미지 pull이 완료되는 환경에서 실제 작성/수정/삭제 성공 경로를 다시 검증해야 한다.
+
+## 31. tsx 실행기의 sandbox IPC 권한 문제
+
+### 문제 정의
+
+Phase 2 backfill script 검증을 위해 `npm --prefix aijinhoblog run ai:backfill -- --dry-run --limit 1`을 기본 sandbox에서 실행했지만 `listen EPERM` 오류가 발생했다.
+
+### 발생 원인
+
+`tsx` 실행기는 내부적으로 임시 IPC pipe를 생성한다. 현재 기본 sandbox에서는 해당 pipe listen 동작이 허용되지 않아 script가 시작되기 전에 실패했다.
+
+### 해결 방법
+
+동일한 dry-run 명령을 권한 허용 컨텍스트에서 재실행했다. script는 정상 실행되어 backfill 대상 게시글 1개를 출력했다.

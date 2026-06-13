@@ -8,7 +8,7 @@ import {
   normalizeKnowledgeText,
   splitTextIntoChunks,
 } from "@/lib/ai-text";
-import type { VectorStore } from "@/lib/ai-vector-store";
+import { ChromaVectorStoreError, type VectorStore } from "@/lib/ai-vector-store";
 
 function createPost(overrides: Partial<IndexablePost> = {}): IndexablePost {
   return {
@@ -93,24 +93,46 @@ function createEmbeddingClient(embedding: number[] = [0.1, 0.2, 0.3]): Embedding
   };
 }
 
-function createVectorStore(options: { failUpsert?: boolean } = {}) {
+function createVectorStore(options: { failDelete?: boolean; failUpsert?: boolean } = {}) {
   const state: {
     deleted: string[];
+    events: string[];
     upserted: unknown[];
   } = {
     deleted: [],
+    events: [],
     upserted: [],
   };
   const vectorStore: VectorStore = {
     async delete(ids) {
+      state.events.push(`delete:${ids.join(",")}`);
+      if (options.failDelete) {
+        throw new ChromaVectorStoreError("ChromaDB 삭제 실패", {
+          operation: "delete",
+          retryAttempts: 3,
+        });
+      }
+
       state.deleted.push(...ids);
+      return {
+        durationMs: 3,
+        retryAttempts: 1,
+      };
     },
     async upsert(records) {
+      state.events.push(`upsert:${records.length}`);
       if (options.failUpsert) {
-        throw new Error("ChromaDB 저장 실패");
+        throw new ChromaVectorStoreError("ChromaDB 저장 실패", {
+          operation: "upsert",
+          retryAttempts: 3,
+        });
       }
 
       state.upserted.push(...records);
+      return {
+        durationMs: 5,
+        retryAttempts: 1,
+      };
     },
   };
 
@@ -122,9 +144,11 @@ function createVectorStore(options: { failUpsert?: boolean } = {}) {
 
 describe("ai text preprocessing", () => {
   it("normalizes markdown and html into knowledge text", () => {
-    expect(normalizeKnowledgeText("# 제목<br><p>**본문** [링크](https://example.com)</p>")).toBe(
-      "제목\n 본문 링크",
-    );
+    expect(
+      normalizeKnowledgeText(
+        "# 제목<br><p>**본문** [링크](https://example.com)</p>\n\n- 항목\n\n```ts\nconst value = 1;\n```",
+      ),
+    ).toBe("제목\n본문 링크\n항목\nconst value = 1;");
   });
 
   it("builds post index text from title, excerpt, and content", () => {
@@ -163,6 +187,8 @@ describe("ai indexing pipeline", () => {
     expect(result.status).toBe("INDEXED");
     expect(vectorState.deleted).toEqual(["old-1"]);
     expect(vectorState.upserted).toHaveLength(result.chunkCount);
+    expect(vectorState.events).toEqual(["upsert:1", "delete:old-1"]);
+    expect(result.chunkIds[0]).toContain("hash:");
     expect(state.vectorIndex?.status).toBe("INDEXED");
     expect(state.logs).toEqual(
       expect.arrayContaining([
@@ -173,7 +199,7 @@ describe("ai indexing pipeline", () => {
   });
 
   it("records skipped status when embedding config is missing", async () => {
-    const { prisma, state } = createPrismaMock();
+    const { prisma, state } = createPrismaMock(["old-1"]);
     const { vectorStore } = createVectorStore();
     const result = await syncPostVectorIndex(createPost(), {
       embeddingClient: {
@@ -187,6 +213,7 @@ describe("ai indexing pipeline", () => {
 
     expect(result.status).toBe("SKIPPED");
     expect(state.vectorIndex?.status).toBe("SKIPPED");
+    expect(state.vectorIndex?.chunkIds).toEqual(["old-1"]);
     expect(state.logs).toEqual([
       expect.objectContaining({
         provider: "openai",
@@ -196,7 +223,7 @@ describe("ai indexing pipeline", () => {
   });
 
   it("records failed status when vector storage fails", async () => {
-    const { prisma, state } = createPrismaMock();
+    const { prisma, state } = createPrismaMock(["old-1"]);
     const { vectorStore } = createVectorStore({ failUpsert: true });
     const result = await syncPostVectorIndex(createPost(), {
       embeddingClient: createEmbeddingClient(),
@@ -207,10 +234,37 @@ describe("ai indexing pipeline", () => {
     expect(result.status).toBe("FAILED");
     expect(result.message).toBe("ChromaDB 저장 실패");
     expect(state.vectorIndex?.status).toBe("FAILED");
+    expect(state.vectorIndex?.chunkIds).toEqual(["old-1"]);
     expect(state.logs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ provider: "openai", status: "SUCCESS" }),
-        expect.objectContaining({ provider: "pipeline", status: "FAILED" }),
+        expect.objectContaining({
+          provider: "chromadb",
+          purpose: "POST_VECTOR_UPSERT",
+          status: "FAILED",
+        }),
+      ]),
+    );
+  });
+
+  it("keeps new and old chunk ids when old vector deletion fails after upsert", async () => {
+    const { prisma, state } = createPrismaMock(["old-1"]);
+    const { state: vectorState, vectorStore } = createVectorStore({ failDelete: true });
+    const result = await syncPostVectorIndex(createPost(), {
+      embeddingClient: createEmbeddingClient(),
+      prisma: prisma as never,
+      vectorStore,
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(vectorState.upserted).toHaveLength(1);
+    expect(vectorState.deleted).toEqual([]);
+    expect(state.vectorIndex?.status).toBe("FAILED");
+    expect(state.vectorIndex?.chunkIds).toEqual(expect.arrayContaining(["old-1"]));
+    expect(state.logs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provider: "chromadb", purpose: "POST_VECTOR_UPSERT" }),
+        expect.objectContaining({ provider: "chromadb", purpose: "POST_VECTOR_DELETE" }),
       ]),
     );
   });

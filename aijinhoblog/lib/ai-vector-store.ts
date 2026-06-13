@@ -1,3 +1,5 @@
+import { RetryableRequestError, type RetryFetchResult, fetchJsonWithRetry } from "@/lib/ai-http";
+
 export type VectorMetadata = Record<string, string | number | boolean>;
 
 export type VectorRecord = {
@@ -7,9 +9,14 @@ export type VectorRecord = {
   metadata: VectorMetadata;
 };
 
+export type VectorOperationResult = {
+  durationMs?: number;
+  retryAttempts?: number;
+};
+
 export type VectorStore = {
-  upsert(records: VectorRecord[]): Promise<void>;
-  delete(ids: string[]): Promise<void>;
+  upsert(records: VectorRecord[]): Promise<VectorOperationResult | void>;
+  delete(ids: string[]): Promise<VectorOperationResult | void>;
 };
 
 type ChromaCollection = {
@@ -17,23 +24,69 @@ type ChromaCollection = {
   name?: string;
 };
 
-async function readJsonResponse(response: Response) {
-  const body = await response.json().catch(() => null);
+export type ChromaOperation = "collection" | "delete" | "upsert";
 
-  if (!response.ok) {
-    const message =
-      typeof body === "object" && body && "message" in body
-        ? String(body.message)
-        : `ChromaDB 요청이 실패했습니다. status=${response.status}`;
+export class ChromaVectorStoreError extends Error {
+  durationMs?: number;
+  operation: ChromaOperation;
+  retryAttempts?: number;
+  status?: number;
 
-    throw new Error(message);
+  constructor(
+    message: string,
+    options: {
+      durationMs?: number;
+      operation: ChromaOperation;
+      retryAttempts?: number;
+      status?: number;
+    },
+  ) {
+    super(message);
+    this.name = "ChromaVectorStoreError";
+    this.durationMs = options.durationMs;
+    this.operation = options.operation;
+    this.retryAttempts = options.retryAttempts;
+    this.status = options.status;
   }
-
-  return body;
 }
 
 function createChromaUrl(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, "")}${path}`;
+}
+
+function toOperationResult(result: RetryFetchResult<unknown>): VectorOperationResult {
+  return {
+    durationMs: result.durationMs,
+    retryAttempts: result.attempts,
+  };
+}
+
+async function requestChroma<T>(
+  operation: ChromaOperation,
+  url: string,
+  init: RequestInit,
+): Promise<RetryFetchResult<T>> {
+  try {
+    return await fetchJsonWithRetry<T>(url, init, {
+      timeoutMs: 10_000,
+    });
+  } catch (error) {
+    if (error instanceof RetryableRequestError) {
+      throw new ChromaVectorStoreError(error.message, {
+        durationMs: error.durationMs,
+        operation,
+        retryAttempts: error.attempts,
+        status: error.status,
+      });
+    }
+
+    throw new ChromaVectorStoreError(
+      error instanceof Error ? error.message : "ChromaDB 요청이 실패했습니다.",
+      {
+        operation,
+      },
+    );
+  }
 }
 
 export function createChromaVectorStore(
@@ -50,7 +103,8 @@ export function createChromaVectorStore(
   const database = options.database ?? process.env.CHROMA_DATABASE ?? "default_database";
 
   async function getCollectionId() {
-    const response = await fetch(
+    const result = await requestChroma<ChromaCollection>(
+      "collection",
       createChromaUrl(
         chromaUrl,
         `/api/v2/tenants/${encodeURIComponent(tenant)}/databases/${encodeURIComponent(database)}/collections`,
@@ -66,13 +120,21 @@ export function createChromaVectorStore(
         }),
       },
     );
-    const collection = (await readJsonResponse(response)) as ChromaCollection;
+    const collection = result.data;
 
-    if (!collection.id) {
-      throw new Error("ChromaDB collection id를 확인할 수 없습니다.");
+    if (!collection?.id) {
+      throw new ChromaVectorStoreError("ChromaDB collection id를 확인할 수 없습니다.", {
+        durationMs: result.durationMs,
+        operation: "collection",
+        retryAttempts: result.attempts,
+        status: result.status,
+      });
     }
 
-    return collection.id;
+    return {
+      collectionId: collection.id,
+      result: toOperationResult(result),
+    };
   }
 
   const store: VectorStore = {
@@ -81,11 +143,12 @@ export function createChromaVectorStore(
         return;
       }
 
-      const collectionId = await getCollectionId();
-      const response = await fetch(
+      const collection = await getCollectionId();
+      const result = await requestChroma(
+        "upsert",
         createChromaUrl(
           chromaUrl,
-          `/api/v2/tenants/${encodeURIComponent(tenant)}/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collectionId)}/upsert`,
+          `/api/v2/tenants/${encodeURIComponent(tenant)}/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collection.collectionId)}/upsert`,
         ),
         {
           method: "POST",
@@ -101,7 +164,10 @@ export function createChromaVectorStore(
         },
       );
 
-      await readJsonResponse(response);
+      return {
+        durationMs: (collection.result.durationMs ?? 0) + result.durationMs,
+        retryAttempts: (collection.result.retryAttempts ?? 0) + result.attempts,
+      };
     },
 
     async delete(ids) {
@@ -109,11 +175,12 @@ export function createChromaVectorStore(
         return;
       }
 
-      const collectionId = await getCollectionId();
-      const response = await fetch(
+      const collection = await getCollectionId();
+      const result = await requestChroma(
+        "delete",
         createChromaUrl(
           chromaUrl,
-          `/api/v2/tenants/${encodeURIComponent(tenant)}/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collectionId)}/delete`,
+          `/api/v2/tenants/${encodeURIComponent(tenant)}/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collection.collectionId)}/delete`,
         ),
         {
           method: "POST",
@@ -126,7 +193,10 @@ export function createChromaVectorStore(
         },
       );
 
-      await readJsonResponse(response);
+      return {
+        durationMs: (collection.result.durationMs ?? 0) + result.durationMs,
+        retryAttempts: (collection.result.retryAttempts ?? 0) + result.attempts,
+      };
     },
   };
 

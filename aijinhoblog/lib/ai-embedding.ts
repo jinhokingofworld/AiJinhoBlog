@@ -1,3 +1,5 @@
+import { RetryableRequestError, type RetryFetchResult, fetchJsonWithRetry } from "@/lib/ai-http";
+
 export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 
 export class EmbeddingSkippedError extends Error {
@@ -8,9 +10,23 @@ export class EmbeddingSkippedError extends Error {
 }
 
 export class EmbeddingProviderError extends Error {
-  constructor(message: string) {
+  durationMs?: number;
+  retryAttempts?: number;
+  status?: number;
+
+  constructor(
+    message: string,
+    options: {
+      durationMs?: number;
+      retryAttempts?: number;
+      status?: number;
+    } = {},
+  ) {
     super(message);
     this.name = "EmbeddingProviderError";
+    this.durationMs = options.durationMs;
+    this.retryAttempts = options.retryAttempts;
+    this.status = options.status;
   }
 }
 
@@ -21,7 +37,9 @@ export type EmbeddingUsage = {
 
 export type EmbeddingResult = {
   embeddings: number[][];
+  durationMs?: number;
   model: string;
+  retryAttempts?: number;
   usage: EmbeddingUsage;
 };
 
@@ -68,24 +86,41 @@ export function createOpenAIEmbeddingClient(options: { apiKey?: string; model?: 
         };
       }
 
-      const response = await fetch("https://api.openai.com/v1/embeddings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          input: texts,
-          model,
-        }),
-      });
-      const body = (await response.json().catch(() => null)) as OpenAIEmbeddingResponse | null;
+      let result: RetryFetchResult<OpenAIEmbeddingResponse>;
 
-      if (!response.ok) {
+      try {
+        result = await fetchJsonWithRetry<OpenAIEmbeddingResponse>(
+          "https://api.openai.com/v1/embeddings",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              input: texts,
+              model,
+            }),
+          },
+          {
+            timeoutMs: 20_000,
+          },
+        );
+      } catch (error) {
+        if (error instanceof RetryableRequestError) {
+          throw new EmbeddingProviderError(error.message, {
+            durationMs: error.durationMs,
+            retryAttempts: error.attempts,
+            status: error.status,
+          });
+        }
+
         throw new EmbeddingProviderError(
-          body?.error?.message ?? `OpenAI embedding 요청이 실패했습니다. status=${response.status}`,
+          error instanceof Error ? error.message : "OpenAI embedding 요청이 실패했습니다.",
         );
       }
+
+      const body = result.data;
 
       const embeddings = body?.data?.map((item) => item.embedding).filter(Boolean) as number[][];
 
@@ -97,7 +132,9 @@ export function createOpenAIEmbeddingClient(options: { apiKey?: string; model?: 
 
       return {
         embeddings,
+        durationMs: result.durationMs,
         model: body?.model ?? model,
+        retryAttempts: result.attempts,
         usage: {
           inputTokens: body?.usage?.prompt_tokens ?? null,
           totalTokens: body?.usage?.total_tokens ?? null,
