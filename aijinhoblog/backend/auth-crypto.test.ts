@@ -7,7 +7,7 @@ import {
   hashSessionToken,
   verifyJwt,
   verifyPassword,
-} from "@/lib/auth-crypto";
+} from "@/backend/auth-crypto";
 
 describe("auth crypto", () => {
   it("hashes and verifies passwords", () => {

@@ -1,4 +1,8 @@
-import { RetryableRequestError, type RetryFetchResult, fetchJsonWithRetry } from "@/lib/ai-http";
+import {
+  RetryableRequestError,
+  type RetryFetchResult,
+  fetchJsonWithRetry,
+} from "@/backend/ai-http";
 
 export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 

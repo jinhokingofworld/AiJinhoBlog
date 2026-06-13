@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/lib/auth";
-import { profileSelect, serializeProfile } from "@/lib/profile";
-import { prisma } from "@/lib/prisma";
-
-import { ProfileSettingsForm } from "./profile-settings-form";
+import { PageFrame } from "@/frontend/components/page-frame";
+import { getCurrentUser } from "@/backend/auth";
+import { profileSelect, serializeProfile } from "@/backend/profile";
+import { prisma } from "@/backend/prisma";
+import { ProfileSettingsForm } from "@/frontend/features/settings/profile-settings-form";
 
 type Props = {
   params: Promise<{
@@ -36,8 +36,8 @@ export default async function ProfileSettingsPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f7f4] px-5 py-10 text-zinc-950">
+    <PageFrame paddingClassName="py-10">
       <ProfileSettingsForm initialProfile={serializeProfile(profile)} />
-    </main>
+    </PageFrame>
   );
 }

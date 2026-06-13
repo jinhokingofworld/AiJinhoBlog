@@ -1,9 +1,9 @@
-import type { Prisma } from "@/lib/generated/prisma";
+import type { Prisma } from "@/backend/generated/prisma";
 
-import { syncPostVectorIndex } from "@/lib/ai-indexing";
-import { getCurrentUser } from "@/lib/auth";
-import { resolvePostFolderId } from "@/lib/folders";
-import { fail, json, readJson } from "@/lib/http";
+import { syncPostVectorIndex } from "@/backend/ai-indexing";
+import { getCurrentUser } from "@/backend/auth";
+import { resolvePostFolderId } from "@/backend/folders";
+import { fail, json, readJson } from "@/backend/http";
 import {
   createPostListFilterWhere,
   normalizePostSort,
@@ -12,9 +12,9 @@ import {
   resolvePublishedAt,
   serializePost,
   toPostTagCreate,
-} from "@/lib/posts";
-import { prisma } from "@/lib/prisma";
-import { parsePositiveInt, parsePostPayload } from "@/lib/validation";
+} from "@/backend/posts";
+import { prisma } from "@/backend/prisma";
+import { parsePositiveInt, parsePostPayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
 

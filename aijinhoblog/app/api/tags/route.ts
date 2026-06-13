@@ -1,5 +1,5 @@
-import { json } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
+import { json } from "@/backend/http";
+import { prisma } from "@/backend/prisma";
 
 export const runtime = "nodejs";
 

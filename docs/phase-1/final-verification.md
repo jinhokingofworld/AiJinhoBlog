@@ -118,7 +118,7 @@ Phase 1 런타임 코드에서는 OpenAI, ChromaDB, RAG, embedding, LLM 호출�
 확인 명령:
 
 ```bash
-rg -n "OpenAI|Chroma|RAG|embedding|embed|LLM|AI 요약|chromadb|chroma" aijinhoblog/app aijinhoblog/lib aijinhoblog/prisma --glob '!aijinhoblog/lib/generated/**'
+rg -n "OpenAI|Chroma|RAG|embedding|embed|LLM|AI 요약|chromadb|chroma" aijinhoblog/app aijinhoblog/backend aijinhoblog/prisma --glob '!aijinhoblog/backend/generated/**'
 ```
 
 결과: 매칭 없음.

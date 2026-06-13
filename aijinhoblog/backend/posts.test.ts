@@ -10,7 +10,7 @@ import {
   normalizePostTagFilter,
   POST_PAGE_SIZE,
   resolvePublishedAt,
-} from "@/lib/posts";
+} from "@/backend/posts";
 
 describe("posts", () => {
   it("creates a fallback summary without calling AI features", () => {
@@ -45,14 +45,37 @@ describe("posts", () => {
     });
   });
 
+  it("creates tag filters from hashtag search queries", () => {
+    expect(createPostListFilterWhere({ query: "#blog" })).toEqual({
+      tags: {
+        some: {
+          tag: {
+            name: "blog",
+          },
+        },
+      },
+    });
+
+    expect(createPostListFilterWhere({ query: "AI #blog" })).toEqual({
+      OR: [{ title: { contains: "AI" } }, { excerpt: { contains: "AI" } }],
+      tags: {
+        some: {
+          tag: {
+            name: "blog",
+          },
+        },
+      },
+    });
+  });
+
   it("uses five posts as the default list page size", () => {
     expect(POST_PAGE_SIZE).toBe(5);
   });
 
-  it("creates a five-page pagination window", () => {
-    expect(createPageWindow(1, 10)).toEqual([1, 2, 3, 4, 5]);
-    expect(createPageWindow(4, 10)).toEqual([2, 3, 4, 5, 6]);
-    expect(createPageWindow(10, 10)).toEqual([6, 7, 8, 9, 10]);
+  it("creates a three-page pagination window", () => {
+    expect(createPageWindow(1, 10)).toEqual([1, 2, 3]);
+    expect(createPageWindow(4, 10)).toEqual([3, 4, 5]);
+    expect(createPageWindow(10, 10)).toEqual([8, 9, 10]);
     expect(createPageWindow(1, 3)).toEqual([1, 2, 3]);
   });
 

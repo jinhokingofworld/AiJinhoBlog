@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RetryableRequestError, fetchJsonWithRetry } from "@/lib/ai-http";
+import { RetryableRequestError, fetchJsonWithRetry } from "@/backend/ai-http";
 
 const originalFetch = globalThis.fetch;
 

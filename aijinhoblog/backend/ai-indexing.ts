@@ -1,25 +1,25 @@
-import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient } from "@/backend/generated/prisma";
 
 import {
   EmbeddingProviderError,
   EmbeddingSkippedError,
   createOpenAIEmbeddingClient,
   type EmbeddingClient,
-} from "@/lib/ai-embedding";
+} from "@/backend/ai-embedding";
 import {
   buildPostIndexText,
   createPostContentHash,
   splitTextIntoChunks,
   type IndexablePostText,
-} from "@/lib/ai-text";
+} from "@/backend/ai-text";
 import {
   ChromaVectorStoreError,
   createChromaVectorStore,
   type VectorOperationResult,
   type VectorMetadata,
   type VectorStore,
-} from "@/lib/ai-vector-store";
-import { prisma as defaultPrisma } from "@/lib/prisma";
+} from "@/backend/ai-vector-store";
+import { prisma as defaultPrisma } from "@/backend/prisma";
 
 export type IndexablePost = IndexablePostText & {
   id: string;

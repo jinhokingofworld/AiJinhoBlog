@@ -19,7 +19,7 @@ aijinhoblog/out/
 build/
 dist/
 coverage/
-aijinhoblog/lib/generated/prisma/
+aijinhoblog/backend/generated/prisma/
 
 # env files
 .env

@@ -1,6 +1,6 @@
-import { getCurrentUser } from "@/lib/auth";
-import { fail, json } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/backend/auth";
+import { fail, json } from "@/backend/http";
+import { prisma } from "@/backend/prisma";
 
 export const runtime = "nodejs";
 

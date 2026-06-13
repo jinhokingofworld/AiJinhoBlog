@@ -1,8 +1,8 @@
-import type { Prisma } from "@/lib/generated/prisma";
-import type { PostStatusInput, PostVisibilityInput } from "@/lib/validation";
+import type { Prisma } from "@/backend/generated/prisma";
+import type { PostStatusInput, PostVisibilityInput } from "@/backend/validation";
 
 export const POST_PAGE_SIZE = 5;
-export const POST_PAGE_WINDOW_SIZE = 5;
+export const POST_PAGE_WINDOW_SIZE = 3;
 export const RECENT_POST_LIMIT = 5;
 
 export type PostListSort = "latest" | "oldest";
@@ -114,6 +114,37 @@ export function normalizePostTagFilter(value: string | null | undefined) {
   return tag || null;
 }
 
+const SEARCH_HASHTAG_PATTERN = /#[^\s#]+/g;
+
+function splitPostSearchQuery(query: string | null) {
+  const tags = new Set<string>();
+
+  if (!query) {
+    return {
+      keyword: null,
+      tags: [],
+    };
+  }
+
+  const keyword = query
+    .replace(SEARCH_HASHTAG_PATTERN, (token) => {
+      const tag = normalizePostTagFilter(token.replace(/[.,!?;:)]+$/, ""));
+
+      if (tag) {
+        tags.add(tag);
+      }
+
+      return " ";
+    })
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    keyword: keyword || null,
+    tags: Array.from(tags),
+  };
+}
+
 export function createPostListFilterWhere({
   query,
   tag,
@@ -123,20 +154,37 @@ export function createPostListFilterWhere({
 }) {
   const normalizedQuery = normalizePostSearchQuery(query);
   const normalizedTag = normalizePostTagFilter(tag);
+  const search = splitPostSearchQuery(normalizedQuery);
+  const tags = new Set(search.tags);
   const where: Prisma.PostWhereInput = {};
 
-  if (normalizedQuery) {
-    where.OR = [
-      { title: { contains: normalizedQuery } },
-      { excerpt: { contains: normalizedQuery } },
-    ];
+  if (normalizedTag) {
+    tags.add(normalizedTag);
   }
 
-  if (normalizedTag) {
+  if (search.keyword) {
+    where.OR = [{ title: { contains: search.keyword } }, { excerpt: { contains: search.keyword } }];
+  }
+
+  const tagList = Array.from(tags);
+
+  if (tagList.length === 1) {
     where.tags = {
       some: {
         tag: {
-          name: normalizedTag,
+          name: tagList[0],
+        },
+      },
+    };
+  }
+
+  if (tagList.length > 1) {
+    where.tags = {
+      some: {
+        tag: {
+          name: {
+            in: tagList,
+          },
         },
       },
     };

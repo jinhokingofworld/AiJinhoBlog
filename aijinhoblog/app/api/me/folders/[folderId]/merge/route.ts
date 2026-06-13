@@ -1,8 +1,8 @@
-import { getCurrentUser } from "@/lib/auth";
-import { ensureDefaultFolder, listFolders, serializeFolder } from "@/lib/folders";
-import { fail, json, readJson } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
-import { parseFolderMergePayload } from "@/lib/validation";
+import { getCurrentUser } from "@/backend/auth";
+import { ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/folders";
+import { fail, json, readJson } from "@/backend/http";
+import { prisma } from "@/backend/prisma";
+import { parseFolderMergePayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
 

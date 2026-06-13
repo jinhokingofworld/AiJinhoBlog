@@ -1,5 +1,5 @@
-import { getCurrentUser } from "@/lib/auth";
-import { fail, json } from "@/lib/http";
+import { getCurrentUser } from "@/backend/auth";
+import { fail, json } from "@/backend/http";
 import {
   createPostListFilterWhere,
   createPostAccessWhere,
@@ -7,9 +7,9 @@ import {
   POST_PAGE_SIZE,
   postSummaryInclude,
   serializePost,
-} from "@/lib/posts";
-import { prisma } from "@/lib/prisma";
-import { parsePositiveInt } from "@/lib/validation";
+} from "@/backend/posts";
+import { prisma } from "@/backend/prisma";
+import { parsePositiveInt } from "@/backend/validation";
 
 export const runtime = "nodejs";
 
