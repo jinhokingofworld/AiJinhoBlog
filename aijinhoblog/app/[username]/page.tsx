@@ -342,34 +342,10 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               </p>
             </div>
 
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-              <div className="inline-flex w-fit border border-zinc-300 text-sm">
-                <Link
-                  className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, {
-                    folderId: selectedFolderId,
-                    page: 1,
-                    query: searchQuery,
-                    sort: "latest",
-                  })}
-                >
-                  최신순
-                </Link>
-                <Link
-                  className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
-                  href={createPageHref(profile.username, {
-                    folderId: selectedFolderId,
-                    page: 1,
-                    query: searchQuery,
-                    sort: "oldest",
-                  })}
-                >
-                  오래된순
-                </Link>
-              </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
               <form
                 action={`/${profile.username}`}
-                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:items-center"
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:w-auto sm:grid-cols-[16rem_auto_auto] md:grid-cols-[18rem_auto_auto]"
                 method="get"
               >
                 <input name="sort" type="hidden" value={sort} />
@@ -406,6 +382,30 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   </Link>
                 ) : null}
               </form>
+              <div className="inline-flex w-fit border border-zinc-300 text-sm">
+                <Link
+                  className={`px-3 py-2 ${sort === "latest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                  href={createPageHref(profile.username, {
+                    folderId: selectedFolderId,
+                    page: 1,
+                    query: searchQuery,
+                    sort: "latest",
+                  })}
+                >
+                  최신순
+                </Link>
+                <Link
+                  className={`border-l border-zinc-300 px-3 py-2 ${sort === "oldest" ? "bg-zinc-950 text-white" : "hover:bg-zinc-50"}`}
+                  href={createPageHref(profile.username, {
+                    folderId: selectedFolderId,
+                    page: 1,
+                    query: searchQuery,
+                    sort: "oldest",
+                  })}
+                >
+                  오래된순
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -467,7 +467,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
             )}
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               {isOwner ? (
                 <Link
@@ -479,7 +479,7 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
               ) : null}
             </div>
             {totalPages > 1 ? (
-              <nav className="flex flex-wrap items-center justify-center gap-2 text-sm">
+              <nav className="flex flex-wrap items-center justify-end gap-2 text-sm">
                 <Link
                   aria-label="이전 페이지"
                   aria-disabled={page <= 1}
@@ -523,33 +523,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 </Link>
               </nav>
             ) : null}
-            <form
-              action={`/${profile.username}`}
-              className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:justify-self-end"
-              method="get"
-            >
-              <input name="sort" type="hidden" value={sort} />
-              {selectedFolderId ? (
-                <input name="folderId" type="hidden" value={selectedFolderId} />
-              ) : null}
-              <label className="sr-only" htmlFor="post-search-bottom">
-                글 검색
-              </label>
-              <input
-                className="h-10 min-w-0 border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-950 sm:w-52"
-                defaultValue={searchQuery ?? ""}
-                id="post-search-bottom"
-                name="query"
-                placeholder="검색 또는 #태그"
-                type="search"
-              />
-              <button
-                className="h-10 border border-zinc-300 px-4 text-sm font-medium hover:bg-zinc-100"
-                type="submit"
-              >
-                검색
-              </button>
-            </form>
           </div>
         </section>
       </div>

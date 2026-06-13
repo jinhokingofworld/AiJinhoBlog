@@ -2,7 +2,7 @@ import type { Prisma } from "@/lib/generated/prisma";
 import type { PostStatusInput, PostVisibilityInput } from "@/lib/validation";
 
 export const POST_PAGE_SIZE = 5;
-export const POST_PAGE_WINDOW_SIZE = 5;
+export const POST_PAGE_WINDOW_SIZE = 3;
 export const RECENT_POST_LIMIT = 5;
 
 export type PostListSort = "latest" | "oldest";
