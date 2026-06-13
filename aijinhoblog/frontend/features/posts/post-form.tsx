@@ -23,6 +23,19 @@ type FolderOption = {
   name: string;
 };
 
+type DuplicateCandidate = {
+  chunk: string;
+  chunkId: string;
+  score: number | null;
+  source: {
+    id: string;
+    path: string | null;
+    title: string;
+    type: "DROPBOX_MD" | "POST";
+    url: string | null;
+  };
+};
+
 type Props = {
   username: string;
   mode: "create" | "edit";
@@ -53,8 +66,11 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
   const [tags, setTags] = useState(initialState.tags);
   const [visibility, setVisibility] = useState<PostVisibilityInput>(initialState.visibility);
   const [folderId, setFolderId] = useState(initialState.folderId);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
+  const [duplicateCheckedKey, setDuplicateCheckedKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const isDirty =
     title !== initialState.title ||
     excerpt !== initialState.excerpt ||
@@ -62,6 +78,12 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     tags !== initialState.tags ||
     visibility !== initialState.visibility ||
     folderId !== initialState.folderId;
+  const duplicateKey = JSON.stringify({
+    content,
+    excerpt,
+    title,
+  });
+  const hasFreshDuplicateCheck = duplicateCheckedKey === duplicateKey;
 
   useEffect(() => {
     if (!isDirty) {
@@ -80,9 +102,75 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     };
   }, [isDirty]);
 
-  async function savePost(status: PostStatusInput) {
+  async function checkDuplicateCandidates() {
+    if (!title.trim() && !content.trim()) {
+      setError("유사 자료를 확인하려면 제목 또는 본문을 입력해주세요.");
+      return null;
+    }
+
+    setCheckingDuplicates(true);
+    setError("");
+
+    const response = await fetch("/api/me/rag/duplicates", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content,
+        excerpt,
+        limit: 5,
+        title,
+      }),
+    });
+    const result = (await response.json()) as {
+      candidates?: DuplicateCandidate[];
+      error?: string;
+    };
+
+    setCheckingDuplicates(false);
+
+    if (!response.ok || !result.candidates) {
+      setError(result.error ?? "유사 자료 확인에 실패했습니다.");
+      return null;
+    }
+
+    const candidates = result.candidates.filter(
+      (candidate) => !(candidate.source.type === "POST" && candidate.source.id === initialPost?.id),
+    );
+
+    setDuplicateCandidates(candidates);
+    setDuplicateCheckedKey(duplicateKey);
+
+    return candidates;
+  }
+
+  async function savePost(
+    status: PostStatusInput,
+    options: {
+      skipDuplicateBlock?: boolean;
+    } = {},
+  ) {
     setSaving(true);
     setError("");
+
+    if (status === "PUBLISHED" && !options.skipDuplicateBlock) {
+      const candidates =
+        duplicateCheckedKey === duplicateKey
+          ? duplicateCandidates
+          : await checkDuplicateCandidates();
+
+      if (!candidates) {
+        setSaving(false);
+        return;
+      }
+
+      if (candidates.length) {
+        setSaving(false);
+        setError("유사한 게시글 또는 Dropbox 문서가 있습니다. 확인 후 게시해주세요.");
+        return;
+      }
+    }
 
     const response = await fetch(
       mode === "create" ? "/api/me/posts" : `/api/me/posts/${initialPost?.id}`,
@@ -306,6 +394,80 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
             게시하기
           </button>
         </div>
+      </div>
+      <div className="border border-zinc-300 bg-zinc-50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">유사 자료 확인</h2>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              게시글과 Dropbox Markdown에서 비슷한 내용을 찾습니다.
+            </p>
+          </div>
+          <button
+            className="shrink-0 border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:text-zinc-300"
+            disabled={saving || checkingDuplicates}
+            onClick={() => void checkDuplicateCandidates()}
+            type="button"
+          >
+            {checkingDuplicates ? "확인 중" : "확인"}
+          </button>
+        </div>
+        {hasFreshDuplicateCheck ? (
+          duplicateCandidates.length ? (
+            <div className="mt-4 space-y-2">
+              {duplicateCandidates.map((candidate) => (
+                <div className="border border-zinc-300 bg-white p-3" key={candidate.chunkId}>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-teal-700">
+                        {candidate.source.type === "POST" ? "게시글" : "Dropbox Markdown"}
+                      </p>
+                      {candidate.source.url ? (
+                        <a
+                          className="mt-1 block truncate text-sm font-semibold hover:underline"
+                          href={candidate.source.url}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          {candidate.source.title}
+                        </a>
+                      ) : (
+                        <p className="mt-1 truncate text-sm font-semibold">
+                          {candidate.source.title}
+                        </p>
+                      )}
+                      {candidate.source.path ? (
+                        <p className="mt-1 truncate text-xs text-zinc-500">
+                          {candidate.source.path}
+                        </p>
+                      ) : null}
+                    </div>
+                    {candidate.score !== null ? (
+                      <span className="shrink-0 text-xs text-zinc-500">
+                        score {candidate.score}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-zinc-600">
+                    {candidate.chunk}
+                  </p>
+                </div>
+              ))}
+              <div className="flex justify-end">
+                <button
+                  className="border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:text-zinc-300"
+                  disabled={saving}
+                  onClick={() => void savePost("PUBLISHED", { skipDuplicateBlock: true })}
+                  type="button"
+                >
+                  무시하고 게시하기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-zinc-600">유사한 자료가 없습니다.</p>
+          )
+        ) : null}
       </div>
     </form>
   );

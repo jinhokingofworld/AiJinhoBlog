@@ -15,23 +15,28 @@ type Props = {
 const settingLinks = [
   {
     description: "이름, 소개, 프로필 이미지, 블로그 제목과 커버 이미지를 수정합니다.",
-    href: "profile",
+    href: (username: string) => `/${username}/settings/profile`,
     label: "프로필 설정",
   },
   {
     description: "블로그 색상, 배너, 레이아웃 같은 디자인 옵션을 관리할 예정입니다.",
-    href: "design",
+    href: (username: string) => `/${username}/settings/design`,
     label: "블로그 디자인 설정",
   },
   {
     description: "이메일, 비밀번호, 로그인 보안 같은 계정 옵션을 관리할 예정입니다.",
-    href: "account",
+    href: (username: string) => `/${username}/settings/account`,
     label: "계정 설정",
   },
   {
     description: "글 목록에서 사용할 폴더를 추가, 수정, 이동, 병합, 삭제합니다.",
-    href: "folders",
+    href: (username: string) => `/${username}/settings/folders`,
     label: "폴더 설정",
+  },
+  {
+    description: "게시글과 Dropbox Markdown 문서를 함께 검색해 질문에 답합니다.",
+    href: (username: string) => `/${username}/memory`,
+    label: "내 기억 Q&A",
   },
 ] as const;
 
@@ -70,8 +75,8 @@ export default async function BlogSettingsPage({ params }: Props) {
           {settingLinks.map((item) => (
             <Link
               className="block min-h-32 border border-zinc-300 p-5 hover:bg-zinc-50"
-              href={`/${username}/settings/${item.href}`}
-              key={item.href}
+              href={item.href(username)}
+              key={item.label}
             >
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-lg font-semibold">{item.label}</h2>
