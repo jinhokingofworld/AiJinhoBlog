@@ -18,9 +18,26 @@ export type VectorOperationResult = {
   retryAttempts?: number;
 };
 
+export type VectorQueryWhere = Record<string, string | number | boolean>;
+
+export type VectorQueryMatch = {
+  distance: number | null;
+  document: string;
+  id: string;
+  metadata: Record<string, unknown>;
+};
+
 export type VectorStore = {
   upsert(records: VectorRecord[]): Promise<VectorOperationResult | void>;
   delete(ids: string[]): Promise<VectorOperationResult | void>;
+};
+
+export type QueryableVectorStore = VectorStore & {
+  query(options: {
+    embedding: number[];
+    limit: number;
+    where?: VectorQueryWhere;
+  }): Promise<VectorQueryMatch[]>;
 };
 
 type ChromaCollection = {
@@ -28,7 +45,7 @@ type ChromaCollection = {
   name?: string;
 };
 
-export type ChromaOperation = "collection" | "delete" | "upsert";
+export type ChromaOperation = "collection" | "delete" | "query" | "upsert";
 
 export class ChromaVectorStoreError extends Error {
   durationMs?: number;
@@ -63,6 +80,10 @@ function toOperationResult(result: RetryFetchResult<unknown>): VectorOperationRe
     durationMs: result.durationMs,
     retryAttempts: result.attempts,
   };
+}
+
+function readQueryValue<T>(value: T[][] | undefined, index: number): T[] {
+  return value?.[index] ?? [];
 }
 
 async function requestChroma<T>(
@@ -141,7 +162,7 @@ export function createChromaVectorStore(
     };
   }
 
-  const store: VectorStore = {
+  const store: QueryableVectorStore = {
     async upsert(records) {
       if (!records.length) {
         return;
@@ -201,6 +222,50 @@ export function createChromaVectorStore(
         durationMs: (collection.result.durationMs ?? 0) + result.durationMs,
         retryAttempts: (collection.result.retryAttempts ?? 0) + result.attempts,
       };
+    },
+
+    async query({ embedding, limit, where }) {
+      if (!embedding.length || limit <= 0) {
+        return [];
+      }
+
+      const collection = await getCollectionId();
+      const result = await requestChroma<{
+        distances?: Array<Array<number | null>>;
+        documents?: Array<Array<string | null>>;
+        ids?: string[][];
+        metadatas?: Array<Array<Record<string, unknown> | null>>;
+      }>(
+        "query",
+        createChromaUrl(
+          chromaUrl,
+          `/api/v2/tenants/${encodeURIComponent(tenant)}/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collection.collectionId)}/query`,
+        ),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            include: ["documents", "metadatas", "distances"],
+            n_results: limit,
+            query_embeddings: [embedding],
+            ...(where ? { where } : {}),
+          }),
+        },
+      );
+      const data = result.data;
+      const ids = readQueryValue(data?.ids, 0);
+      const documents = readQueryValue(data?.documents, 0);
+      const metadatas = readQueryValue(data?.metadatas, 0);
+      const distances = readQueryValue(data?.distances, 0);
+
+      return ids.map((id, index) => ({
+        id,
+        document: documents[index] ?? "",
+        metadata: metadatas[index] ?? {},
+        distance: distances[index] ?? null,
+      }));
     },
   };
 

@@ -59,6 +59,9 @@ function toVectorMetadata(
   contentHash: string,
 ): VectorMetadata {
   return {
+    sourceId: post.id,
+    sourceTitle: post.title,
+    sourceType: "POST",
     postId: post.id,
     authorId: post.authorId,
     status: post.status ?? "",
