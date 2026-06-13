@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { PageFrame } from "@/app/_components/page-frame";
 import { PostForm } from "@/app/[username]/posts/post-form";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureDefaultFolder, listFolders } from "@/lib/folders";
@@ -46,7 +47,7 @@ export default async function EditPostPage({ params }: Props) {
   const folders = await listFolders(currentUser.id);
 
   return (
-    <main className="min-h-screen bg-[#f8f7f4] px-5 py-10 text-zinc-950">
+    <PageFrame paddingClassName="py-10">
       <section className="mx-auto max-w-2xl border border-zinc-300 bg-white p-6">
         <h1 className="text-2xl font-semibold tracking-normal">글 수정</h1>
         <div className="mt-6">
@@ -72,6 +73,6 @@ export default async function EditPostPage({ params }: Props) {
           />
         </div>
       </section>
-    </main>
+    </PageFrame>
   );
 }

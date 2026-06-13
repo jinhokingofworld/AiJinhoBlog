@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 
+import { PageFrame } from "@/app/_components/page-frame";
 import { FolderSettingsClient } from "@/app/[username]/settings/folders/folder-settings-client";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureDefaultFolder, listFolders, serializeFolder } from "@/lib/folders";
@@ -27,7 +28,7 @@ export default async function FolderSettingsPage({ params }: Props) {
   const folders = await listFolders(currentUser.id);
 
   return (
-    <main className="min-h-screen bg-[#f8f7f4] px-5 py-10 text-zinc-950">
+    <PageFrame paddingClassName="py-10">
       <section className="mx-auto max-w-4xl border border-zinc-300 bg-white p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -53,6 +54,6 @@ export default async function FolderSettingsPage({ params }: Props) {
           <FolderSettingsClient initialFolders={folders.map(serializeFolder)} username={username} />
         </div>
       </section>
-    </main>
+    </PageFrame>
   );
 }

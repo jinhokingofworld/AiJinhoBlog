@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BlogHeroHeader, ProfileSummaryCard } from "@/app/_components/blog-components";
+import { PageFrame } from "@/app/_components/page-frame";
 import { CommentsPanel } from "@/app/[username]/posts/[postId]/comments-panel";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -137,134 +138,110 @@ export default async function PostDetailPage({ params }: Props) {
   });
 
   return (
-    <main className="min-h-screen bg-[#f8f7f4] px-5 py-8 text-zinc-950">
-      <div className="mx-auto max-w-[1080px]">
-        <header
-          className="flex min-h-40 items-center justify-center border border-zinc-300 bg-cover bg-center px-6 text-center"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,.72), rgba(255,255,255,.72)), url(${profile.coverImageUrl})`,
-          }}
-        >
-          <div>
-            <p className="text-sm font-semibold text-teal-700">AiJinhoBlog</p>
-            <Link className="mt-2 block text-2xl font-semibold" href={`/${profile.username}`}>
-              {profile.blogTitle}
-            </Link>
-          </div>
-        </header>
+    <PageFrame>
+      <BlogHeroHeader align="center" profile={profile} titleHref={`/${profile.username}`} />
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
-          <article className="border border-zinc-300 bg-white p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-3xl font-semibold tracking-normal">{serializedPost.title}</h1>
-                  {isOwner && serializedPost.status === "DRAFT" ? (
-                    <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                      임시저장
-                    </span>
-                  ) : null}
-                  {isOwner && serializedPost.visibility === "PRIVATE" ? (
-                    <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
-                      비공개
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-3 text-sm text-zinc-500">
-                  {new Date(serializedPost.createdAt).toLocaleDateString("ko-KR")}
-                </p>
-              </div>
-              {isOwner ? (
-                <Link
-                  className="border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
-                  href={`/${profile.username}/posts/${serializedPost.id}/edit`}
-                >
-                  수정
-                </Link>
-              ) : null}
-            </div>
-
-            {serializedPost.folder || serializedPost.tags.length ? (
-              <div className="mt-5 flex flex-wrap gap-2">
-                {serializedPost.folder ? (
-                  <span className="border border-teal-200 bg-teal-50 px-2 py-1 text-xs text-teal-800">
-                    {serializedPost.folder.name}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <article className="border border-zinc-300 bg-white p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-3xl font-semibold tracking-normal">{serializedPost.title}</h1>
+                {isOwner && serializedPost.status === "DRAFT" ? (
+                  <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                    임시저장
                   </span>
                 ) : null}
-                {serializedPost.tags.map((tag) => (
-                  <span
-                    className="border border-zinc-300 px-2 py-1 text-xs text-zinc-600"
-                    key={tag.id}
-                  >
-                    #{tag.name}
+                {isOwner && serializedPost.visibility === "PRIVATE" ? (
+                  <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
+                    비공개
                   </span>
-                ))}
+                ) : null}
               </div>
-            ) : null}
-
-            <p className="mt-6 border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-6 text-zinc-600">
-              {serializedPost.summary}
-            </p>
-
-            <div className="mt-8 whitespace-pre-wrap text-base leading-8 text-zinc-800">
-              {serializedPost.content}
+              <p className="mt-3 text-sm text-zinc-500">
+                {new Date(serializedPost.createdAt).toLocaleDateString("ko-KR")}
+              </p>
             </div>
+            {isOwner ? (
+              <Link
+                className="border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
+                href={`/${profile.username}/posts/${serializedPost.id}/edit`}
+              >
+                수정
+              </Link>
+            ) : null}
+          </div>
 
-            <CommentsPanel
-              currentUser={
-                currentUser
-                  ? {
-                      id: currentUser.id,
-                      username: currentUser.username,
-                      name: currentUser.name,
-                    }
-                  : null
-              }
-              initialComments={serializedPost.comments ?? []}
-              postAuthorId={post.authorId}
-              postId={post.id}
-            />
-          </article>
+          {serializedPost.folder || serializedPost.tags.length ? (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {serializedPost.folder ? (
+                <span className="border border-teal-200 bg-teal-50 px-2 py-1 text-xs text-teal-800">
+                  {serializedPost.folder.name}
+                </span>
+              ) : null}
+              {serializedPost.tags.map((tag) => (
+                <span
+                  className="border border-zinc-300 px-2 py-1 text-xs text-zinc-600"
+                  key={tag.id}
+                >
+                  #{tag.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
-          <aside className="space-y-6">
-            <section className="border border-zinc-300 bg-white p-4">
-              <Image
-                alt={`${profile.name} 프로필 이미지`}
-                className="aspect-square w-full border border-zinc-300 bg-zinc-50 object-cover"
-                height={220}
-                src={profile.profileImageUrl}
-                width={220}
-              />
-              <p className="mt-3 font-semibold">{profile.name}</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">{profile.intro}</p>
-            </section>
+          <p className="mt-6 border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-6 text-zinc-600">
+            {serializedPost.summary}
+          </p>
 
-            <section className="border border-zinc-300 bg-white p-4">
-              <h2 className="text-sm font-semibold">최근 글</h2>
-              <div className="mt-4 space-y-2">
-                {recentPosts.length ? (
-                  recentPosts.map((recentPost) => (
-                    <Link
-                      className="block border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
-                      href={`/${profile.username}/posts/${recentPost.id}`}
-                      key={recentPost.id}
-                    >
-                      <p className="font-medium">{recentPost.title}</p>
-                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">
-                        {createPostSummary(recentPost.excerpt, recentPost.content, 70)}
-                      </p>
-                    </Link>
-                  ))
-                ) : (
-                  <p className="border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-500">
-                    다른 글이 없습니다.
-                  </p>
-                )}
-              </div>
-            </section>
-          </aside>
-        </div>
+          <div className="mt-8 whitespace-pre-wrap text-base leading-8 text-zinc-800">
+            {serializedPost.content}
+          </div>
+
+          <CommentsPanel
+            currentUser={
+              currentUser
+                ? {
+                    id: currentUser.id,
+                    username: currentUser.username,
+                    name: currentUser.name,
+                  }
+                : null
+            }
+            initialComments={serializedPost.comments ?? []}
+            postAuthorId={post.authorId}
+            postId={post.id}
+          />
+        </article>
+
+        <aside className="space-y-6">
+          <ProfileSummaryCard imageSize={220} profile={profile} />
+
+          <section className="border border-zinc-300 bg-white p-4">
+            <h2 className="text-sm font-semibold">최근 글</h2>
+            <div className="mt-4 space-y-2">
+              {recentPosts.length ? (
+                recentPosts.map((recentPost) => (
+                  <Link
+                    className="block border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
+                    href={`/${profile.username}/posts/${recentPost.id}`}
+                    key={recentPost.id}
+                  >
+                    <p className="font-medium">{recentPost.title}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">
+                      {createPostSummary(recentPost.excerpt, recentPost.content, 70)}
+                    </p>
+                  </Link>
+                ))
+              ) : (
+                <p className="border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-500">
+                  다른 글이 없습니다.
+                </p>
+              )}
+            </div>
+          </section>
+        </aside>
       </div>
-    </main>
+    </PageFrame>
   );
 }

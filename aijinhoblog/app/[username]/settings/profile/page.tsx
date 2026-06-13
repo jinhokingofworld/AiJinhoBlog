@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { PageFrame } from "@/app/_components/page-frame";
 import { getCurrentUser } from "@/lib/auth";
 import { profileSelect, serializeProfile } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
@@ -36,8 +37,8 @@ export default async function ProfileSettingsPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f7f4] px-5 py-10 text-zinc-950">
+    <PageFrame paddingClassName="py-10">
       <ProfileSettingsForm initialProfile={serializeProfile(profile)} />
-    </main>
+    </PageFrame>
   );
 }

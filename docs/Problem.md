@@ -441,3 +441,47 @@ Phase 2 backfill script 검증을 위해 `npm --prefix aijinhoblog run ai:backfi
 ### 해결 방법
 
 동일한 dry-run 명령을 권한 허용 컨텍스트에서 재실행했다. script는 정상 실행되어 backfill 대상 게시글 1개를 출력했다.
+
+## 32. 전역 계정 바 이동 후 블로그 홈 로그아웃 액션 참조 오류
+
+### 문제 정의
+
+큰 화면 계정 상태 UI를 모든 페이지에서 보이게 하기 위해 블로그 홈 내부 계정 바를 `RootLayout` 전역 컴포넌트로 이동한 뒤, 로그인 상태로 자기 블로그 홈에 접근하면 500 응답이 발생했다. RSC 에러에는 `ReferenceError: logoutAction is not defined`가 기록되었다.
+
+### 발생 원인
+
+블로그 홈 상단 계정 바를 제거하면서 해당 파일 안에 있던 `logoutAction` 서버 액션도 함께 제거했다. 하지만 모바일 햄버거 메뉴는 여전히 같은 `logoutAction`을 사용하고 있었기 때문에, 로그인 상태에서 해당 분기가 렌더링될 때 정의되지 않은 함수를 참조했다.
+
+### 해결 방법
+
+로그아웃 서버 액션을 `app/auth-actions.ts` 공용 파일로 분리했다. 전역 큰 화면 계정 바와 블로그 홈 모바일 햄버거 메뉴가 같은 `logoutAction`을 import하도록 변경했고, 로그인 쿠키를 붙인 상태에서 `/`, `/login`, `/{username}`, `/{username}/settings`가 모두 200 응답하며 계정 메뉴를 렌더링하는 것을 확인했다.
+
+## 33. 전역 계정 상태 UI의 max-width 이탈
+
+### 문제 정의
+
+큰 화면 전역 계정 상태 바를 `fixed right-4`로 배치한 뒤, 1200px 화면에서 계정 상태 UI가 블로그 헤더와 본문 컨테이너의 `max-w-[1120px]` 우측선을 넘어갔다.
+
+### 발생 원인
+
+계정 상태 바가 페이지 컨테이너 안에 있지 않고 viewport 기준 `right-4`에 직접 고정되어 있었다. 블로그 본문은 `px-4 sm:px-6` 패딩과 `max-w-[1120px]` 중앙 정렬을 함께 사용하기 때문에, viewport 기준 고정 위치와 본문 우측선이 일치하지 않았다.
+
+### 해결 방법
+
+전역 계정 상태 바의 outer 영역은 `fixed inset-x-0`으로 두고, 내부에 본문과 같은 `px-4 sm:px-6` 및 `max-w-[1120px]` 컨테이너를 추가했다. 1200px 화면에서 계정 바 내부 컨테이너, 실제 계정 UI, 본문 컨테이너의 오른쪽 끝이 모두 같은 `1160px` 좌표에 맞는 것을 브라우저로 확인했다.
+
+추가로 `/{username}/posts` URL은 별도 페이지가 없어 404 화면으로 떨어졌고, 이 경우 블로그 max-width 기준 컨테이너가 존재하지 않아 정렬 기준이 달라졌다. `/{username}/posts` 라우트를 추가해 `/{username}` 블로그 홈으로 리다이렉트하도록 변경했고, `/jinhokingoftheworld/posts` 접근 시 `/jinhokingoftheworld`로 이동해 같은 `1160px` 우측선에 맞는 것을 확인했다.
+
+## 34. 페이지별 JSX 중복으로 인한 구조 해석 불가
+
+### 문제 정의
+
+블로그 홈, 게시글 상세, 글쓰기, 설정 페이지가 각자 `<main>`, max-width, 헤더, 프로필 카드, 폴더 드롭다운 같은 구조를 직접 정의하고 있었다. 이 때문에 한 화면을 수정해도 다른 화면의 기준이 달라지고, React 컴포넌트를 재사용하는 장점이 살아나지 않았다.
+
+### 발생 원인
+
+페이지 파일이 데이터 로딩과 화면 구조 정의를 동시에 맡고 있었다. 공통 프레임과 반복 UI를 컴포넌트로 분리하지 않았기 때문에, 페이지마다 `max-w-*`, padding, header, profile card markup이 조금씩 달라졌다.
+
+### 해결 방법
+
+`app/_components/page-frame.tsx`에 공통 `PageFrame`, `pageFramePaddingClass`, `pageFrameMaxWidthClass`를 만들고, `app/_components/blog-components.tsx`에 `BlogHeroHeader`, `ProfileSummaryCard`, `FolderDropdown`, `Pagination`을 분리했다. 블로그 홈, 게시글 상세, 글쓰기/수정, 설정 허브와 하위 설정 페이지가 이 공통 프레임을 사용하도록 변경했다. 전역 계정 상태 바도 같은 프레임 상수를 import해 기준이 한 곳에서 관리되도록 했다.

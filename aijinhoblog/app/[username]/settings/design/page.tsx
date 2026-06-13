@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { PageFrame } from "@/app/_components/page-frame";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function BlogDesignSettingsPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f7f4] px-5 py-10 text-zinc-950">
+    <PageFrame paddingClassName="py-10">
       <section className="mx-auto max-w-3xl border border-zinc-300 bg-white p-6">
         <p className="text-sm font-semibold text-teal-700">AiJinhoBlog</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-normal">블로그 디자인 설정</h1>
@@ -47,6 +48,6 @@ export default async function BlogDesignSettingsPage({ params }: Props) {
           </Link>
         </div>
       </section>
-    </main>
+    </PageFrame>
   );
 }
