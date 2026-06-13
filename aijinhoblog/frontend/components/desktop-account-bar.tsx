@@ -53,6 +53,9 @@ export default async function DesktopAccountBar() {
                   <Link className={menuLinkClass} href={`/${currentUser.username}/memory`}>
                     내 기억 Q&amp;A
                   </Link>
+                  <Link className={menuLinkClass} href={`/${currentUser.username}/agent`}>
+                    글쓰기 Agent
+                  </Link>
                   <Link className={menuLinkClass} href={`/${currentUser.username}/settings`}>
                     블로그 설정
                   </Link>

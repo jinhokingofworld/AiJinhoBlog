@@ -265,6 +265,9 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                   <Link className={menuLinkClass} href={`/${profile.username}/memory`}>
                     내 기억 Q&amp;A
                   </Link>
+                  <Link className={menuLinkClass} href={`/${profile.username}/agent`}>
+                    글쓰기 Agent
+                  </Link>
                   <Link className={menuLinkClass} href={`/${profile.username}/settings`}>
                     블로그 설정
                   </Link>
@@ -343,6 +346,12 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                 href={`/${profile.username}/memory`}
               >
                 내 기억 Q&amp;A
+              </Link>
+              <Link
+                className="block border border-zinc-300 bg-white px-3 py-2 text-center text-base font-semibold hover:bg-zinc-100"
+                href={`/${profile.username}/agent`}
+              >
+                글쓰기 Agent
               </Link>
               <Link
                 className="block border border-zinc-300 bg-white px-3 py-2 text-center text-base font-semibold hover:bg-zinc-100"

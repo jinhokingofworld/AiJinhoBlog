@@ -25,6 +25,8 @@ model User {
   dropboxMarkdownDocuments     DropboxMarkdownDocument[]
   dropboxMarkdownVectorIndexes DropboxMarkdownVectorIndex[]
   aiRequestLogs                AiRequestLog[]
+  writingStyleProfile          WritingStyleProfile?
+  writingRefactorResults       WritingRefactorResult[]
   createdAt                    DateTime                     @default(now())
   updatedAt                    DateTime                     @updatedAt
 }
@@ -81,6 +83,7 @@ model Post {
   tags          PostTag[]
   vectorIndex   PostVectorIndex?
   aiRequestLogs AiRequestLog[]
+  refactorResults WritingRefactorResult[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -221,4 +224,35 @@ model AiRequestLog {
   @@index([dropboxMarkdownDocumentId, createdAt])
   @@index([userId, createdAt])
   @@index([purpose, status, createdAt])
+}
+
+model WritingStyleProfile {
+  id                  String   @id @default(cuid())
+  ownerId             String   @unique
+  owner               User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  toneSummary         String   @db.Text
+  sentenceSummary     String   @db.Text
+  frequentExpressions Json?
+  samplePostIds       Json?
+  lastAnalyzedAt      DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model WritingRefactorResult {
+  id            String   @id @default(cuid())
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  postId        String?
+  post          Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  mode          String   @db.VarChar(40)
+  originalText  String   @db.LongText
+  revisedText   String   @db.LongText
+  changeSummary String   @db.Text
+  appliedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([ownerId, createdAt])
+  @@index([postId])
 }

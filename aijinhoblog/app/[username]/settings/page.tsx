@@ -38,6 +38,11 @@ const settingLinks = [
     href: (username: string) => `/${username}/memory`,
     label: "내 기억 Q&A",
   },
+  {
+    description: "최근 글 기반 글감 추천, 문체 변환, 출판 퀄리티 리팩토링을 실행합니다.",
+    href: (username: string) => `/${username}/agent`,
+    label: "글쓰기 Agent",
+  },
 ] as const;
 
 export default async function BlogSettingsPage({ params }: Props) {
