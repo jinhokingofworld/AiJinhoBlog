@@ -40,7 +40,7 @@ type Props = {
   }>;
 };
 
-type OwnerPostStatusFilter = "all" | "published" | "draft" | "private";
+type OwnerPostStatusFilter = "all" | "published" | "private";
 
 type BlogListHrefOptions = {
   folderId?: string | null;
@@ -51,7 +51,7 @@ type BlogListHrefOptions = {
 };
 
 function normalizeOwnerPostStatusFilter(value: string | null | undefined): OwnerPostStatusFilter {
-  if (value === "published" || value === "draft" || value === "private") {
+  if (value === "published" || value === "private") {
     return value;
   }
 
@@ -163,18 +163,15 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
   const where = createPostAccessWhere(blog.id, currentUser?.id);
   Object.assign(where, createPostListFilterWhere({ query: searchQuery }));
 
+  where.status = "PUBLISHED";
+
   if (selectedFolderId) {
     where.folderId = selectedFolderId;
   }
 
   if (isOwner) {
     if (ownerStatusFilter === "published") {
-      where.status = "PUBLISHED";
       where.visibility = "PUBLIC";
-    }
-
-    if (ownerStatusFilter === "draft") {
-      where.status = "DRAFT";
     }
 
     if (ownerStatusFilter === "private") {
@@ -233,7 +230,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
   const ownerStatusFilters: Array<{ label: string; value: OwnerPostStatusFilter }> = [
     { label: "전체", value: "all" },
     { label: "공개", value: "published" },
-    { label: "임시저장", value: "draft" },
     { label: "비공개", value: "private" },
   ];
 
@@ -529,11 +525,6 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
                         {post.title}
                       </h3>
                       <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                        {isOwner && post.status === "DRAFT" ? (
-                          <span className="border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                            임시저장
-                          </span>
-                        ) : null}
                         {isOwner && post.visibility === "PRIVATE" ? (
                           <span className="border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
                             비공개

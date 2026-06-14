@@ -373,6 +373,20 @@ export type PostMutationResult = {
   post: SerializedPost;
 };
 
+export type SerializedDraftPost = Pick<
+  SerializedPost,
+  | "content"
+  | "createdAt"
+  | "excerpt"
+  | "folderId"
+  | "id"
+  | "status"
+  | "tags"
+  | "title"
+  | "updatedAt"
+  | "visibility"
+>;
+
 export function toPostTagCreate(tagNames: string[]) {
   return tagNames.map((name) => ({
     tag: {
@@ -578,6 +592,36 @@ export async function listOwnerPosts({
   });
 
   return posts.map(serializePost);
+}
+
+export async function listOwnerDraftPosts(ownerId: string) {
+  const drafts = await prisma.post.findMany({
+    where: {
+      authorId: ownerId,
+      status: "DRAFT",
+    },
+    include: postSummaryInclude,
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+
+  return drafts.map((draft) => {
+    const serialized = serializePost(draft);
+
+    return {
+      content: serialized.content,
+      createdAt: serialized.createdAt,
+      excerpt: serialized.excerpt,
+      folderId: serialized.folderId,
+      id: serialized.id,
+      status: serialized.status,
+      tags: serialized.tags,
+      title: serialized.title,
+      updatedAt: serialized.updatedAt,
+      visibility: serialized.visibility,
+    } satisfies SerializedDraftPost;
+  });
 }
 
 export async function getOwnerPost(ownerId: string, postId: string) {

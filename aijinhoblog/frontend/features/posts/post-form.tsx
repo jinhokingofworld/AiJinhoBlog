@@ -23,6 +23,11 @@ type FolderOption = {
   name: string;
 };
 
+type DraftPost = InitialPost & {
+  createdAt: string;
+  updatedAt: string;
+};
+
 type DuplicateCandidate = {
   chunk: string;
   chunkId: string;
@@ -66,9 +71,15 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
   const [folderId, setFolderId] = useState(initialState.folderId);
   const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
   const [duplicateCheckedKey, setDuplicateCheckedKey] = useState("");
+  const [drafts, setDrafts] = useState<DraftPost[]>([]);
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [draftsLoaded, setDraftsLoaded] = useState(false);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [loadedDraftId, setLoadedDraftId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const activePostId = initialPost?.id ?? loadedDraftId;
   const isDirty =
     title !== initialState.title ||
     content !== initialState.content ||
@@ -97,6 +108,50 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [isDirty]);
+
+  async function loadDraftList() {
+    setDraftsOpen((current) => !current);
+
+    if (draftsLoaded) {
+      return;
+    }
+
+    setLoadingDrafts(true);
+    setError("");
+
+    const response = await fetch("/api/me/posts/drafts");
+    const result = (await response.json()) as {
+      drafts?: DraftPost[];
+      error?: string;
+    };
+
+    setLoadingDrafts(false);
+
+    if (!response.ok || !result.drafts) {
+      setError(result.error ?? "임시저장 목록을 불러오지 못했습니다.");
+      return;
+    }
+
+    setDrafts(result.drafts);
+    setDraftsLoaded(true);
+  }
+
+  function applyDraft(draft: DraftPost) {
+    if (isDirty && !window.confirm("현재 입력 중인 내용을 임시저장 글로 바꾸시겠습니까?")) {
+      return;
+    }
+
+    setTitle(draft.title);
+    setContent(draft.content);
+    setTags(draft.tags.map((tag) => tag.name).join(", "));
+    setVisibility(draft.visibility);
+    setFolderId(draft.folderId ?? folders[0]?.id ?? "");
+    setLoadedDraftId(draft.id);
+    setDuplicateCandidates([]);
+    setDuplicateCheckedKey("");
+    setDraftsOpen(false);
+    setError("");
+  }
 
   async function checkDuplicateCandidates() {
     if (!title.trim() && !content.trim()) {
@@ -132,7 +187,7 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     }
 
     const candidates = result.candidates.filter(
-      (candidate) => !(candidate.source.type === "POST" && candidate.source.id === initialPost?.id),
+      (candidate) => !(candidate.source.type === "POST" && candidate.source.id === activePostId),
     );
 
     setDuplicateCandidates(candidates);
@@ -168,23 +223,20 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
       }
     }
 
-    const response = await fetch(
-      mode === "create" ? "/api/me/posts" : `/api/me/posts/${initialPost?.id}`,
-      {
-        method: mode === "create" ? "POST" : "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title,
-          content,
-          tags,
-          status,
-          visibility,
-          folderId,
-        }),
+    const response = await fetch(activePostId ? `/api/me/posts/${activePostId}` : "/api/me/posts", {
+      method: activePostId ? "PATCH" : "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        title,
+        content,
+        tags,
+        status,
+        visibility,
+        folderId,
+      }),
+    });
     const result = (await response.json()) as {
       post?: {
         id: string;
@@ -252,6 +304,71 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
         void savePost("PUBLISHED");
       }}
     >
+      <section className="border border-zinc-300 bg-zinc-50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">임시저장 불러오기</h2>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              저장해 둔 임시글을 현재 입력 폼으로 불러옵니다.
+            </p>
+          </div>
+          <button
+            className="shrink-0 border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:text-zinc-300"
+            disabled={loadingDrafts || saving}
+            onClick={() => void loadDraftList()}
+            type="button"
+          >
+            {loadingDrafts ? "불러오는 중" : "불러오기"}
+          </button>
+        </div>
+
+        {loadedDraftId ? (
+          <p className="mt-3 border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-800">
+            {mode === "create"
+              ? "임시저장 글을 불러왔습니다. 게시하면 해당 임시글이 게시글로 전환됩니다."
+              : "임시저장 글을 불러왔습니다. 저장하면 현재 수정 중인 글에 반영됩니다."}
+          </p>
+        ) : null}
+
+        {draftsOpen ? (
+          <div className="mt-4 border border-zinc-300 bg-white">
+            {loadingDrafts ? (
+              <p className="px-4 py-6 text-center text-sm text-zinc-500">
+                임시저장 목록을 불러오는 중입니다.
+              </p>
+            ) : drafts.length ? (
+              drafts.map((draft) => (
+                <div
+                  className="flex flex-col gap-3 border-b border-zinc-200 p-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+                  key={draft.id}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{draft.title}</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      마지막 수정 {new Date(draft.updatedAt).toLocaleString("ko-KR")}
+                    </p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600">
+                      {draft.excerpt || draft.content || "본문 없음"}
+                    </p>
+                  </div>
+                  <button
+                    className="shrink-0 border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
+                    onClick={() => applyDraft(draft)}
+                    type="button"
+                  >
+                    이 글 불러오기
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="px-4 py-6 text-center text-sm text-zinc-500">
+                임시저장된 글이 없습니다.
+              </p>
+            )}
+          </div>
+        ) : null}
+      </section>
+
       <div>
         <label className="text-sm font-medium" htmlFor="title">
           제목
