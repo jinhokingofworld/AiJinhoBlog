@@ -11,14 +11,10 @@ type Props = {
     username: string;
     postId: string;
   }>;
-  searchParams?: Promise<{
-    import?: string;
-  }>;
 };
 
-export default async function EditPostPage({ params, searchParams }: Props) {
+export default async function EditPostPage({ params }: Props) {
   const { username, postId } = await params;
-  const query = await searchParams;
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -72,7 +68,6 @@ export default async function EditPostPage({ params, searchParams }: Props) {
               id: folder.id,
               name: folder.name,
             }))}
-            initialActiveTab={query?.import === "external" ? "import" : "write"}
             mode="edit"
             username={username}
           />

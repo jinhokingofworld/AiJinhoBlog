@@ -4,6 +4,12 @@ import {
   syncPostVectorIndex as defaultSyncPostVectorIndex,
   type VectorPipelineResult,
 } from "@/backend/ai-indexing";
+import {
+  GenerationProviderError,
+  GenerationSkippedError,
+  createOpenAIGenerationClient,
+  type GenerationClient,
+} from "@/backend/ai-generation";
 import type { PostStatusInput, PostVisibilityInput } from "@/backend/validation";
 import { resolvePostFolderId } from "@/backend/folders";
 import { prisma } from "@/backend/prisma";
@@ -12,6 +18,9 @@ import { type PostInput } from "@/backend/validation";
 export const POST_PAGE_SIZE = 5;
 export const POST_PAGE_WINDOW_SIZE = 3;
 export const RECENT_POST_LIMIT = 5;
+export const POST_EXCERPT_MAX_LENGTH = 180;
+export const POST_EXCERPT_SYSTEM_PROMPT =
+  "너는 개인 블로그 글의 목록용 요약을 작성하는 편집자다. 제공된 제목과 본문에 근거해서만 한국어 Plain Text 한 문장으로 요약한다. Markdown 문법, 목록 기호, 제목, 따옴표, HTML 태그를 쓰지 않는다. 본문에 없는 내용은 추측하지 않는다. 120자 이내로 작성한다.";
 
 export type PostListSort = "latest" | "oldest";
 
@@ -111,6 +120,7 @@ type PostVectorInput = Pick<
 
 type PostServiceDependencies = {
   deletePostVectorIndex?: typeof defaultDeletePostVectorIndex;
+  generationClient?: GenerationClient;
   syncPostVectorIndex?: typeof defaultSyncPostVectorIndex;
 };
 
@@ -235,6 +245,62 @@ export function createPostSummary(excerpt: string | null, content: string, maxLe
   return `${source.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
 }
 
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+export function sanitizeGeneratedExcerpt(value: string, maxLength = POST_EXCERPT_MAX_LENGTH) {
+  const plain = value
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, "")
+    .replace(/[#*_`>\[\]]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return truncateText(plain, maxLength);
+}
+
+export function createFallbackPostExcerpt({
+  content,
+  title,
+}: Pick<PostInput, "content" | "title">) {
+  return createPostSummary(null, content || title, POST_EXCERPT_MAX_LENGTH) || null;
+}
+
+export async function generatePostExcerpt(
+  input: Pick<PostInput, "content" | "title">,
+  generationClient: GenerationClient = createOpenAIGenerationClient(),
+) {
+  const fallback = createFallbackPostExcerpt(input);
+
+  if (!input.content.trim()) {
+    return fallback;
+  }
+
+  try {
+    const generated = await generationClient.generateAnswer({
+      context: `제목:\n${input.title}\n\n본문:\n${input.content.slice(0, 6000)}`,
+      question: "이 블로그 글의 목록용 요약을 한 문장으로 작성해줘.",
+      systemPrompt: POST_EXCERPT_SYSTEM_PROMPT,
+      temperature: 0.1,
+    });
+    const excerpt = sanitizeGeneratedExcerpt(generated.text);
+
+    return excerpt || fallback;
+  } catch (error) {
+    if (error instanceof GenerationSkippedError || error instanceof GenerationProviderError) {
+      return fallback;
+    }
+
+    throw error;
+  }
+}
+
 export function createPostAccessWhere(authorId: string, currentUserId?: string | null) {
   const where: Prisma.PostWhereInput = {
     authorId,
@@ -354,10 +420,11 @@ export async function createOwnerPost(
     throw new PostServiceError(folder.error, 404);
   }
 
+  const excerpt = await generatePostExcerpt(input, dependencies.generationClient);
   const post = await prisma.post.create({
     data: {
       title: input.title,
-      excerpt: input.excerpt,
+      excerpt,
       content: input.content,
       status: input.status,
       visibility: input.visibility,
@@ -408,6 +475,7 @@ export async function updateOwnerPost(
     throw new PostServiceError(folder.error, 404);
   }
 
+  const excerpt = await generatePostExcerpt(input, dependencies.generationClient);
   const [, updatedPost] = await prisma.$transaction([
     prisma.postTag.deleteMany({
       where: {
@@ -420,7 +488,7 @@ export async function updateOwnerPost(
       },
       data: {
         title: input.title,
-        excerpt: input.excerpt,
+        excerpt,
         content: input.content,
         status: input.status,
         visibility: input.visibility,

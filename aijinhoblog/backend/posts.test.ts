@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   canReadPost,
+  createFallbackPostExcerpt,
   createPageWindow,
   createPostListFilterWhere,
   createPostSummary,
+  generatePostExcerpt,
   normalizePostSearchQuery,
   normalizePostSort,
   normalizePostTagFilter,
@@ -12,6 +14,7 @@ import {
   postDetailInclude,
   postSummaryInclude,
   resolvePublishedAt,
+  sanitizeGeneratedExcerpt,
 } from "@/backend/posts";
 
 describe("posts", () => {
@@ -19,6 +22,42 @@ describe("posts", () => {
     expect(createPostSummary("직접 작성한 요약", "본문")).toBe("직접 작성한 요약");
     expect(createPostSummary(null, "첫 줄\n\n두 번째 줄", 20)).toBe("첫 줄 두 번째 줄");
     expect(createPostSummary(null, "a".repeat(130), 12)).toBe("aaaaaaaaa...");
+  });
+
+  it("sanitizes generated excerpts into plain text", () => {
+    expect(sanitizeGeneratedExcerpt("## 제목\n- **핵심** 내용을 요약합니다.")).toBe(
+      "제목 핵심 내용을 요약합니다.",
+    );
+  });
+
+  it("generates post excerpts with an AI client and falls back on provider failures", async () => {
+    const generationClient = {
+      generateAnswer: async () => ({
+        model: "test",
+        text: "- AI가 작성한 요약입니다.",
+        usage: {
+          inputTokens: null,
+          outputTokens: null,
+          totalTokens: null,
+        },
+      }),
+    };
+    const excerpt = await generatePostExcerpt(
+      {
+        content: "본문 내용입니다. 저장할 때 AI가 요약을 작성합니다.",
+        title: "AI 요약",
+      },
+      generationClient,
+    );
+
+    expect(excerpt).toBe("AI가 작성한 요약입니다.");
+
+    const fallback = createFallbackPostExcerpt({
+      content: "AI 호출이 실패해도 본문 기반 요약은 남습니다.",
+      title: "fallback",
+    });
+
+    expect(fallback).toBe("AI 호출이 실패해도 본문 기반 요약은 남습니다.");
   });
 
   it("normalizes list sort options", () => {

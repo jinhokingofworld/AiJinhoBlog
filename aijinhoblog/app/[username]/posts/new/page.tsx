@@ -9,14 +9,10 @@ type Props = {
   params: Promise<{
     username: string;
   }>;
-  searchParams?: Promise<{
-    import?: string;
-  }>;
 };
 
-export default async function NewPostPage({ params, searchParams }: Props) {
+export default async function NewPostPage({ params }: Props) {
   const { username } = await params;
-  const query = await searchParams;
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -40,7 +36,6 @@ export default async function NewPostPage({ params, searchParams }: Props) {
               id: folder.id,
               name: folder.name,
             }))}
-            initialActiveTab={query?.import === "external" ? "import" : "write"}
             mode="create"
             username={username}
           />

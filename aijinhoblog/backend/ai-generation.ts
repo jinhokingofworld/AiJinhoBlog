@@ -51,8 +51,15 @@ export type GenerationResult = {
   usage: GenerationUsage;
 };
 
+export type GenerateAnswerInput = {
+  context: string;
+  question: string;
+  systemPrompt?: string;
+  temperature?: number;
+};
+
 export type GenerationClient = {
-  generateAnswer(input: { context: string; question: string }): Promise<GenerationResult>;
+  generateAnswer(input: GenerateAnswerInput): Promise<GenerationResult>;
 };
 
 type OpenAIChatResponse = {
@@ -82,7 +89,7 @@ export function createOpenAIGenerationClient(options: { apiKey?: string; model?:
     DEFAULT_RAG_MODEL;
 
   const client: GenerationClient = {
-    async generateAnswer({ context, question }) {
+    async generateAnswer({ context, question, systemPrompt, temperature }) {
       if (!apiKey) {
         throw new GenerationSkippedError("OPENAI_API_KEY가 없어 답변 생성을 건너뜁니다.");
       }
@@ -102,7 +109,7 @@ export function createOpenAIGenerationClient(options: { apiKey?: string; model?:
               messages: [
                 {
                   role: "system",
-                  content: RAG_SYSTEM_PROMPT,
+                  content: systemPrompt ?? RAG_SYSTEM_PROMPT,
                 },
                 {
                   role: "user",
@@ -110,7 +117,7 @@ export function createOpenAIGenerationClient(options: { apiKey?: string; model?:
                 },
               ],
               model,
-              temperature: 0.2,
+              temperature: temperature ?? 0.2,
             }),
           },
           {
