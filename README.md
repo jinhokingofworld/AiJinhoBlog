@@ -38,6 +38,7 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `/{username}/posts/{postId}`: 게시글 상세
 - `/{username}/posts/{postId}/edit`: 글 수정, 소유자 전용
 - `/{username}/agent`: 글감 추천, 문체 변환, 출판 리팩토링 Agent, 소유자 전용
+- `/{username}/settings/connections`: Dropbox 등 외부 지식 소스 연결 관리, 소유자 전용
 - `/{username}/settings/profile`: 프로필 설정, 소유자 전용
 - `/{username}/settings/folders`: 폴더 관리, 소유자 전용
 
@@ -58,6 +59,10 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `DELETE /api/me/posts/{postId}`
 - `GET /api/me/posts/{postId}/vector-index`
 - `POST /api/me/posts/{postId}/vector-index`
+- `GET /api/me/connections`: 로그인 사용자의 외부 지식 소스 연결 상태 조회
+- `GET /api/me/connections/dropbox/start`: Dropbox OAuth 연결 시작
+- `GET /api/me/connections/dropbox/callback`: Dropbox OAuth callback 처리
+- `DELETE /api/me/connections/dropbox`: Dropbox 연결 해제
 - `GET /api/me/dropbox/markdown`: Dropbox Markdown 파일 목록 조회
 - `GET /api/me/dropbox/markdown/content?path={path}`: Dropbox Markdown 파일 본문 읽기
 - `POST /api/me/dropbox/markdown/sync`: Dropbox Markdown 문서 저장 및 ChromaDB 색인
@@ -103,7 +108,9 @@ npm run services:config
 
 ## Dropbox Markdown 동기화
 
-Phase 3 이후에는 `DROPBOX_ACCESS_TOKEN`이 설정된 환경에서 Dropbox Markdown 파일을 내부 지식 소스로 동기화할 수 있습니다.
+Phase 8 이후 앱 안의 Dropbox Markdown 목록 조회와 동기화는 `/{username}/settings/connections`에서 연결한 로그인 사용자의 Dropbox OAuth 토큰으로만 실행됩니다. 저장된 문서와 ChromaDB vector metadata는 `ownerId`로 격리됩니다.
+
+개발용 CLI sync는 기존처럼 `DROPBOX_ACCESS_TOKEN`을 사용할 수 있습니다.
 
 ```bash
 npm --prefix aijinhoblog run dropbox:sync -- --username {username}
@@ -159,4 +166,9 @@ MCP owner는 tool 입력의 `ownerUsername`, `ownerEmail`, `ownerId`로 지정�
 - `OPENAI_RAG_MODEL`: RAG 답변 생성 모델명
 - `CHROMA_URL`: ChromaDB 서버 주소
 - `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름
-- `DROPBOX_ACCESS_TOKEN`: Dropbox Markdown 목록 조회와 파일 본문 읽기에 사용하는 read-only 토큰, Phase 3A 이후 사용
+- `DROPBOX_APP_KEY`: 사용자별 Dropbox OAuth 연결에 사용하는 app key
+- `DROPBOX_APP_SECRET`: 사용자별 Dropbox OAuth 연결에 사용하는 app secret
+- `DROPBOX_OAUTH_REDIRECT_URI`: Dropbox app에 등록한 OAuth redirect URI
+- `DROPBOX_OAUTH_SCOPES`: Dropbox read-only scope 목록, 기본값 `files.metadata.read files.content.read`
+- `EXTERNAL_CONNECTION_ENCRYPTION_KEY`: 외부 provider access token과 refresh token 암호화 키
+- `DROPBOX_ACCESS_TOKEN`: 개발용 CLI Dropbox sync fallback token

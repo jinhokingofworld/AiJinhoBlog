@@ -39,6 +39,11 @@ const settingLinks = [
     label: "내 기억 Q&A",
   },
   {
+    description: "로그인 사용자의 Dropbox 문서 연결과 외부 지식 소스를 관리합니다.",
+    href: (username: string) => `/${username}/settings/connections`,
+    label: "외부 지식 소스",
+  },
+  {
     description: "최근 글 기반 글감 추천, 문체 변환, 출판 퀄리티 리팩토링을 실행합니다.",
     href: (username: string) => `/${username}/agent`,
     label: "글쓰기 Agent",

@@ -2,13 +2,14 @@
 
 ## 1. 목표와 진행 원칙
 
-이 프로젝트의 목표는 기본 블로그 기능 위에 RAG, MCP, AI Agent 기능을 단계적으로 결합하여, 사용자의 과거 글과 Dropbox Markdown 문서를 개인 지식 기반으로 활용하는 AI 블로그 플랫폼을 완성하는 것이다.
+이 프로젝트의 목표는 기본 블로그 기능 위에 RAG, MCP, AI Agent 기능을 단계적으로 결합하여, 사용자의 과거 글과 사용자가 직접 연결한 외부 문서를 개인 지식 기반으로 활용하는 AI 블로그 플랫폼을 완성하는 것이다.
 
 진행 원칙은 다음과 같다.
 
 - 먼저 블로그의 핵심 CRUD와 데이터 모델을 안정화한다.
 - 게시글 데이터가 쌓이고 관리될 수 있는 구조를 만든 뒤 AI 기능을 연결한다.
 - 자연어 RAG 답변을 만들기 전에 Dropbox Markdown 문서를 먼저 확보하고 내부 지식 소스로 색인한다.
+- 초기 Dropbox 연동은 서버 환경 변수 토큰으로 검증하되, 운영 목표는 로그인 사용자별 외부 문서 연결과 사용자별 RAG 격리다.
 - RAG, MCP, Agent는 한 번에 통합하지 않고, 작은 검증 기능부터 붙인다.
 - GitHub Projects에서는 `Main Issue > Medium Issue > Detailed Issue` 구조를 유지한다.
 - 브랜치는 Medium Issue 기준으로 생성하고, Detailed Issue 단위로 `dev` 브랜치에 PR을 보낸다.
@@ -26,6 +27,8 @@
 - 제목 또는 본문 기준 유사 게시글 탐색
 - 중복 작성 가능성 알림
 - Dropbox MCP를 통한 외부 Markdown 문서 확보 및 색인
+- 로그인 사용자별 Dropbox 문서 연결, 동기화, 색인
+- Notion 문서 연결을 추가할 수 있는 외부 지식 소스 구조
 - 게시글과 Dropbox Markdown 문서를 함께 사용하는 RAG 검색
 - 자체 MCP 서버를 통한 게시글 CRUD 제어
 - 외부 링크 또는 이미지 분석 후 게시글 초안 저장
@@ -345,6 +348,56 @@
 - 새 개발자가 README를 보고 로컬 실행과 배포 흐름을 이해할 수 있다.
 - 운영 환경에서 MVP 기능을 실행할 수 있다.
 
+### Phase 8. 사용자별 외부 지식 커넥터 고도화
+
+#### Main Issue: 사용자별 Dropbox 연결 전환
+
+현재 Phase 3 구현은 Dropbox Markdown RAG 검증을 위해 서버 `.env`의 `DROPBOX_ACCESS_TOKEN`을 사용한다. 이 방식은 단일 사용자 테스트에는 충분하지만, 여러 로그인 사용자가 각자의 Dropbox 문서를 연결하는 개인 에이전트 요구사항을 만족하지 못한다.
+
+1. Medium Issue: 외부 지식 소스 연결 모델 구현
+   - Detailed Issue: `ExternalKnowledgeConnection` 또는 동등한 사용자별 연결 테이블 설계
+   - Detailed Issue: provider, ownerId, scope, 연결 상태, 마지막 동기화 시각 저장 구조 구현
+   - Detailed Issue: access token과 refresh token 암호화 저장 방식 구현
+   - Detailed Issue: 연결 해제 시 토큰과 동기화 문서 처리 정책 구현
+
+2. Medium Issue: Dropbox OAuth 연결 UI/API 구현
+   - Detailed Issue: Dropbox OAuth 시작 API 구현
+   - Detailed Issue: OAuth callback API 구현
+   - Detailed Issue: 로그인 사용자와 Dropbox 계정 연결 저장
+   - Detailed Issue: 연결 상태, 재연결, 연결 해제 UI 구현
+
+3. Medium Issue: Dropbox 동기화의 사용자별 토큰 전환
+   - Detailed Issue: `DROPBOX_ACCESS_TOKEN` 기반 client 생성을 사용자 connection token 기반으로 변경
+   - Detailed Issue: Dropbox 목록, 본문 읽기, sync API가 로그인 사용자의 connection만 사용하도록 수정
+   - Detailed Issue: 토큰 만료 및 refresh 실패 처리
+   - Detailed Issue: 기존 서버 토큰 방식은 개발용 fallback으로만 제한하거나 제거
+
+완료 기준:
+
+- 각 사용자는 자신의 Dropbox 계정을 연결하고 해제할 수 있다.
+- Dropbox Markdown 목록 조회와 sync는 로그인 사용자의 토큰으로만 수행된다.
+- 저장된 Dropbox 문서와 ChromaDB vector는 사용자별 ownerId로 격리된다.
+- 다른 사용자의 Dropbox 문서 경로, 본문, vector가 RAG 결과에 섞이지 않는다.
+
+#### Main Issue: Notion 지식 소스 추가 준비
+
+1. Medium Issue: provider 공통 문서 모델 정리
+   - Detailed Issue: Dropbox 전용 문서 모델과 Notion 문서 모델의 공통 필드 정의
+   - Detailed Issue: source type을 `POST`, `DROPBOX_MD`, `NOTION_PAGE`로 확장
+   - Detailed Issue: RAG source hydration을 provider별 adapter 구조로 분리
+
+2. Medium Issue: Notion read-only 연결 설계
+   - Detailed Issue: Notion OAuth 또는 integration token 방식 비교
+   - Detailed Issue: 페이지 목록 조회와 본문 추출 방식 결정
+   - Detailed Issue: Notion block을 plain text로 정규화하는 규칙 작성
+   - Detailed Issue: Notion 문서 chunk embedding 및 재색인 정책 설계
+
+완료 기준:
+
+- Dropbox 외에도 Notion을 외부 지식 소스로 추가할 수 있는 provider 구조가 준비된다.
+- RAG 검색과 답변은 source provider가 늘어나도 사용자별 격리 규칙을 유지한다.
+- Notion 구현 전 필요한 인증 방식, 데이터 모델, 색인 정책이 문서화된다.
+
 ## 4. 권장 개발 순서 요약
 
 1. 프로젝트 기준 정리
@@ -367,6 +420,8 @@
 18. 출판 퀄리티 리팩토링 및 Before/After 비교 구현
 19. 테스트, 보안, 성능 점검
 20. 배포 문서화 및 운영 환경 구성
+21. 사용자별 Dropbox 연결 및 sync 전환
+22. Notion 지식 소스 추가를 위한 provider 구조 정리
 
 ## 5. Future Scope 진행 순서
 

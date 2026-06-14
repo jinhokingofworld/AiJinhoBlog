@@ -6,7 +6,7 @@
 - MySQL 8.4 compatible database
 - ChromaDB reachable from the Next.js server
 - OpenAI API key for embedding, RAG answer generation, and Agent generation
-- Dropbox access token with read-only file scopes when Dropbox Markdown sync is enabled
+- Dropbox OAuth app with read-only file scopes when Dropbox Markdown sync is enabled
 
 ## Required Environment
 
@@ -18,7 +18,12 @@ Use the root `.env.example` as the source of shared configuration names. Product
 - `OPENAI_RAG_MODEL`: generation model for RAG and Agent flows
 - `CHROMA_URL`: ChromaDB HTTP endpoint
 - `CHROMA_COLLECTION`: Chroma collection name
-- `DROPBOX_ACCESS_TOKEN`: Dropbox Markdown read token
+- `DROPBOX_APP_KEY`: Dropbox OAuth app key
+- `DROPBOX_APP_SECRET`: Dropbox OAuth app secret
+- `DROPBOX_OAUTH_REDIRECT_URI`: registered Dropbox OAuth callback URL
+- `DROPBOX_OAUTH_SCOPES`: Dropbox read-only scopes, default `files.metadata.read files.content.read`
+- `EXTERNAL_CONNECTION_ENCRYPTION_KEY`: encryption key for user-owned external provider tokens
+- `DROPBOX_ACCESS_TOKEN`: development-only fallback for the CLI Dropbox sync script
 - `AI_HTTP_TIMEOUT_MS`, `AI_HTTP_TOTAL_ATTEMPTS`, `AI_HTTP_RETRY_DELAY_MS`: external AI request controls
 - `AIJINHOBLOG_MCP_OWNER_*`: default owner only for local or single-owner MCP sessions
 
@@ -54,7 +59,8 @@ npm --prefix aijinhoblog run start
 - Confirm `GET /login` and `GET /signup` render.
 - Sign up or log in with a production test user.
 - Create, edit, and delete a private draft and a public post.
-- Run Dropbox Markdown sync for a test user before relying on RAG answers.
+- Connect Dropbox at `/{username}/settings/connections` for a production test user.
+- Run Dropbox Markdown sync for that user before relying on RAG answers.
 - Ask a memory question and verify every source belongs to the current user.
 - Run the Agent page and verify recommendations, rewrite, refactor, and apply-to-post.
 - Confirm AI request logs are created for RAG and indexing flows.
@@ -62,7 +68,7 @@ npm --prefix aijinhoblog run start
 ## Known Limits
 
 - ChromaDB must be backed up separately from MySQL.
-- Dropbox sync is token-based and currently read-only.
+- Dropbox sync uses per-user OAuth connections and currently stays read-only.
 - MCP tools require an explicit owner in tool input or `AIJINHOBLOG_MCP_OWNER_*`.
 - AI calls are retried with bounded timeout and attempts, but there is no per-user rate limit yet.
 - Dependency audit advisories from framework or transitive packages are tracked in issue #41.
