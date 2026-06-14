@@ -65,6 +65,17 @@ export type ProfileInput = {
   blogTitle?: string;
 };
 
+export type AccountSettingsInput = {
+  currentPassword: string;
+  email: string;
+  name: string;
+};
+
+export type PasswordChangeInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -169,6 +180,67 @@ export function parseCredentials(
       password,
       name: name || undefined,
       username: username || undefined,
+    },
+  };
+}
+
+export function parseAccountSettingsPayload(payload: unknown): Result<AccountSettingsInput> {
+  if (!isRecord(payload)) {
+    return { ok: false, error: "요청 본문이 올바르지 않습니다." };
+  }
+
+  const email = readString(payload, "email").toLowerCase();
+  const name = readString(payload, "name");
+  const currentPassword = readString(payload, "currentPassword");
+
+  if (!isValidEmail(email)) {
+    return { ok: false, error: "이메일 형식이 올바르지 않습니다." };
+  }
+
+  if (name.length < 2 || name.length > 80) {
+    return { ok: false, error: "이름은 2자 이상 80자 이하로 작성해야 합니다." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      currentPassword,
+      email,
+      name,
+    },
+  };
+}
+
+export function parsePasswordChangePayload(payload: unknown): Result<PasswordChangeInput> {
+  if (!isRecord(payload)) {
+    return { ok: false, error: "요청 본문이 올바르지 않습니다." };
+  }
+
+  const currentPassword = readString(payload, "currentPassword");
+  const newPassword = readString(payload, "newPassword");
+  const newPasswordConfirm = readString(payload, "newPasswordConfirm");
+
+  if (!currentPassword) {
+    return { ok: false, error: "현재 비밀번호를 입력해야 합니다." };
+  }
+
+  if (newPassword.length < 8) {
+    return { ok: false, error: "새 비밀번호는 8자 이상이어야 합니다." };
+  }
+
+  if (newPasswordConfirm && newPassword !== newPasswordConfirm) {
+    return { ok: false, error: "새 비밀번호 확인이 일치하지 않습니다." };
+  }
+
+  if (currentPassword === newPassword) {
+    return { ok: false, error: "새 비밀번호는 현재 비밀번호와 달라야 합니다." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      currentPassword,
+      newPassword,
     },
   };
 }

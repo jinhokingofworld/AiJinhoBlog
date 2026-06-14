@@ -19,12 +19,7 @@ const settingLinks = [
     label: "프로필 설정",
   },
   {
-    description: "블로그 색상, 배너, 레이아웃 같은 디자인 옵션을 관리할 예정입니다.",
-    href: (username: string) => `/${username}/settings/design`,
-    label: "블로그 디자인 설정",
-  },
-  {
-    description: "이메일, 비밀번호, 로그인 보안 같은 계정 옵션을 관리할 예정입니다.",
+    description: "이메일, 이름, 비밀번호 같은 로그인 계정 정보를 관리합니다.",
     href: (username: string) => `/${username}/settings/account`,
     label: "계정 설정",
   },
@@ -70,7 +65,7 @@ export default async function BlogSettingsPage({ params }: Props) {
             <p className="text-sm font-semibold text-teal-700">AiJinhoBlog</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-normal">블로그 설정</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-              프로필, 디자인, 계정, 폴더 설정으로 이동하는 진입점을 한 곳에 모았습니다.
+              프로필, 계정, 폴더, 외부 지식 소스 설정으로 이동하는 진입점을 한 곳에 모았습니다.
             </p>
           </div>
           <Link
