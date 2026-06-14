@@ -3,8 +3,18 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
 } from "@/backend/auth";
-import { DropboxAccessTokenMissingError, DropboxConnectorError } from "@/backend/dropbox";
+import {
+  DropboxAccessTokenMissingError,
+  DropboxConnectorError,
+  createDropboxMarkdownClient,
+} from "@/backend/dropbox";
 import { syncDropboxMarkdownDocuments } from "@/backend/dropbox-indexing";
+import {
+  ExternalConnectionRequiredError,
+  getDropboxConnectionAccessToken,
+  markExternalConnectionError,
+  markExternalConnectionSynced,
+} from "@/backend/external-connections";
 import { fail, json, readJson } from "@/backend/http";
 
 export const runtime = "nodejs";
@@ -24,6 +34,13 @@ function parseSyncPayload(payload: unknown) {
 }
 
 function toDropboxSyncErrorResponse(error: unknown) {
+  if (error instanceof ExternalConnectionRequiredError) {
+    return {
+      message: "Dropbox 연결이 필요합니다.",
+      status: 409,
+    };
+  }
+
   if (error instanceof DropboxAccessTokenMissingError) {
     return {
       message: error.message,
@@ -35,7 +52,7 @@ function toDropboxSyncErrorResponse(error: unknown) {
     return {
       message:
         error.status === 401
-          ? "Dropbox 인증에 실패했습니다. DROPBOX_ACCESS_TOKEN 값을 확인해주세요."
+          ? "Dropbox 인증에 실패했습니다. Dropbox를 다시 연결해주세요."
           : error.message,
       status: error.status && error.status >= 400 && error.status < 500 ? 400 : 502,
     };
@@ -59,13 +76,23 @@ export async function POST(request: Request) {
   const options = parseSyncPayload(await readJson(request));
 
   try {
-    const sync = await syncDropboxMarkdownDocuments(user.id, options);
+    const accessToken = await getDropboxConnectionAccessToken(user.id);
+    const sync = await syncDropboxMarkdownDocuments(user.id, options, {
+      dropboxClient: createDropboxMarkdownClient({ accessToken }),
+    });
+
+    await markExternalConnectionSynced(user.id, "DROPBOX");
+
     const response = json({
       sync,
     });
 
     return attachRefreshedSessionCookie(response, auth);
   } catch (error) {
+    if (!(error instanceof ExternalConnectionRequiredError)) {
+      await markExternalConnectionError(user.id, "DROPBOX", error);
+    }
+
     const response = toDropboxSyncErrorResponse(error);
 
     return failWithRefreshedSession(response.message, auth, response.status);

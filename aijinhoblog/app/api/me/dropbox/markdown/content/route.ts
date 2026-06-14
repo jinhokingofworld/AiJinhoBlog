@@ -8,11 +8,22 @@ import {
   DropboxConnectorError,
   createDropboxMarkdownClient,
 } from "@/backend/dropbox";
+import {
+  ExternalConnectionRequiredError,
+  getDropboxConnectionAccessToken,
+} from "@/backend/external-connections";
 import { fail, json } from "@/backend/http";
 
 export const runtime = "nodejs";
 
 function toDropboxErrorResponse(error: unknown) {
+  if (error instanceof ExternalConnectionRequiredError) {
+    return {
+      message: "Dropbox 연결이 필요합니다.",
+      status: 409,
+    };
+  }
+
   if (error instanceof DropboxAccessTokenMissingError) {
     return {
       message: error.message,
@@ -24,7 +35,7 @@ function toDropboxErrorResponse(error: unknown) {
     return {
       message:
         error.status === 401
-          ? "Dropbox 인증에 실패했습니다. DROPBOX_ACCESS_TOKEN 값을 확인해주세요."
+          ? "Dropbox 인증에 실패했습니다. Dropbox를 다시 연결해주세요."
           : error.message,
       status: error.status && error.status >= 400 && error.status < 500 ? 400 : 502,
     };
@@ -51,7 +62,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const file = await createDropboxMarkdownClient().readMarkdownFile(path);
+    const accessToken = await getDropboxConnectionAccessToken(user.id);
+    const file = await createDropboxMarkdownClient({ accessToken }).readMarkdownFile(path);
     const response = json(file);
 
     return attachRefreshedSessionCookie(response, auth);

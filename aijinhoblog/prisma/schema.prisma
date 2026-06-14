@@ -24,6 +24,7 @@ model User {
   vectorIndexes                PostVectorIndex[]
   dropboxMarkdownDocuments     DropboxMarkdownDocument[]
   dropboxMarkdownVectorIndexes DropboxMarkdownVectorIndex[]
+  externalKnowledgeConnections ExternalKnowledgeConnection[]
   aiRequestLogs                AiRequestLog[]
   writingStyleProfile          WritingStyleProfile?
   writingRefactorResults       WritingRefactorResult[]
@@ -65,6 +66,17 @@ enum AiRequestStatus {
   SUCCESS
   SKIPPED
   FAILED
+}
+
+enum ExternalKnowledgeProvider {
+  DROPBOX
+  NOTION
+}
+
+enum ExternalKnowledgeConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
 }
 
 model Post {
@@ -199,6 +211,27 @@ model DropboxMarkdownVectorIndex {
 
   @@index([ownerId, status])
   @@index([updatedAt])
+}
+
+model ExternalKnowledgeConnection {
+  id                     String                            @id @default(cuid())
+  ownerId                String
+  owner                  User                              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  provider               ExternalKnowledgeProvider
+  providerAccountId      String?                           @db.VarChar(191)
+  providerAccountName    String?                           @db.VarChar(191)
+  scope                  String?                           @db.VarChar(512)
+  accessTokenCiphertext  String                            @db.Text
+  refreshTokenCiphertext String?                           @db.Text
+  expiresAt              DateTime?
+  status                 ExternalKnowledgeConnectionStatus @default(CONNECTED)
+  lastSyncedAt           DateTime?
+  lastError              String?                           @db.Text
+  createdAt              DateTime                          @default(now())
+  updatedAt              DateTime                          @updatedAt
+
+  @@unique([ownerId, provider])
+  @@index([ownerId, status])
 }
 
 model AiRequestLog {
