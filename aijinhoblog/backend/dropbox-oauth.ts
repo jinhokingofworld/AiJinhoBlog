@@ -1,10 +1,15 @@
 import { createJwt, verifyJwt } from "@/backend/auth-crypto";
 import { RetryableRequestError, fetchJsonWithRetry } from "@/backend/ai-http";
+import "@/backend/env";
 
 const DROPBOX_OAUTH_AUTHORIZE_URL = "https://www.dropbox.com/oauth2/authorize";
 const DROPBOX_OAUTH_TOKEN_URL = "https://api.dropboxapi.com/oauth2/token";
 const DEFAULT_DROPBOX_SCOPES = "files.metadata.read files.content.read";
 const DROPBOX_STATE_TTL_MS = 1000 * 60 * 10;
+
+export type DropboxOAuthStatePayload = {
+  returnTo: string | null;
+};
 
 export class DropboxOAuthConfigError extends Error {
   constructor(message: string) {
@@ -82,9 +87,19 @@ function getDropboxScopes() {
   return process.env.DROPBOX_OAUTH_SCOPES ?? DEFAULT_DROPBOX_SCOPES;
 }
 
-export function createDropboxOAuthState(ownerId: string) {
+function readString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+export function createDropboxOAuthState(
+  ownerId: string,
+  options: {
+    returnTo?: string | null;
+  } = {},
+) {
   return createJwt(
     {
+      returnTo: options.returnTo ?? null,
       sub: ownerId,
       type: "dropbox_oauth_state",
     },
@@ -92,10 +107,23 @@ export function createDropboxOAuthState(ownerId: string) {
   );
 }
 
-export function verifyDropboxOAuthState(state: string, ownerId: string) {
+export function readDropboxOAuthState(
+  state: string,
+  ownerId: string,
+): DropboxOAuthStatePayload | null {
   const payload = verifyJwt(state);
 
-  return payload?.type === "dropbox_oauth_state" && payload.sub === ownerId;
+  if (payload?.type !== "dropbox_oauth_state" || payload.sub !== ownerId) {
+    return null;
+  }
+
+  return {
+    returnTo: readString(payload.returnTo),
+  };
+}
+
+export function verifyDropboxOAuthState(state: string, ownerId: string) {
+  return readDropboxOAuthState(state, ownerId) !== null;
 }
 
 export function createDropboxOAuthAuthorizeUrl({

@@ -5,6 +5,7 @@ import {
 } from "@/backend/auth";
 import { fail, json, readJson } from "@/backend/http";
 import { createOwnerPost, PostServiceError } from "@/backend/posts";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 import { parsePostPayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
@@ -25,11 +26,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const post = await createOwnerPost(user.id, parsed.value);
-    const response = json({ post }, 201);
+    await enforceAiRateLimit({
+      endpoint: "post.create",
+      userId: user.id,
+    });
+    const result = await createOwnerPost(user.id, parsed.value);
+    const response = json(result, 201);
 
     return attachRefreshedSessionCookie(response, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     if (error instanceof PostServiceError) {
       return failWithRefreshedSession(error.message, auth, error.status);
     }

@@ -3,6 +3,7 @@ import {
   getCurrentUserOrRefresh,
   jsonWithRefreshedSession,
 } from "@/backend/auth";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 import {
   getWritingStyleProfile,
   refreshWritingStyleProfile,
@@ -39,10 +40,20 @@ export async function POST() {
   }
 
   try {
+    await enforceAiRateLimit({
+      endpoint: "agent.style-profile",
+      userId: user.id,
+    });
     const profile = await refreshWritingStyleProfile(user.id);
 
     return jsonWithRefreshedSession({ profile }, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     const response = toWritingAgentErrorResponse(error);
 
     return failWithRefreshedSession(response.message, auth, response.status);

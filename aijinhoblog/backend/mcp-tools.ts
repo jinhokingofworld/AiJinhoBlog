@@ -198,9 +198,9 @@ export function registerBlogMcpTools(server: McpServer) {
     async (input) => {
       try {
         const owner = await resolveMcpOwner(input);
-        const post = await createOwnerPost(owner.id, createPostInput(input));
+        const result = await createOwnerPost(owner.id, createPostInput(input));
 
-        return toToolText({ owner, post });
+        return toToolText({ owner, ...result });
       } catch (error) {
         return toToolError(error);
       }
@@ -221,9 +221,9 @@ export function registerBlogMcpTools(server: McpServer) {
     async (input) => {
       try {
         const owner = await resolveMcpOwner(input);
-        const post = await updateOwnerPost(owner.id, input.postId, createPostInput(input));
+        const result = await updateOwnerPost(owner.id, input.postId, createPostInput(input));
 
-        return toToolText({ owner, post });
+        return toToolText({ owner, ...result });
       } catch (error) {
         return toToolError(error);
       }
@@ -245,7 +245,7 @@ export function registerBlogMcpTools(server: McpServer) {
         const owner = await resolveMcpOwner(input);
         const result = await deleteOwnerPost(owner.id, input.postId);
 
-        return toToolText({ owner, result });
+        return toToolText({ owner, ...result });
       } catch (error) {
         return toToolError(error);
       }
@@ -268,7 +268,7 @@ export function registerBlogMcpTools(server: McpServer) {
     async (input) => {
       try {
         const owner = await resolveMcpOwner(input);
-        const post = await createDraftFromLink({
+        const result = await createDraftFromLink({
           options: {
             folderId: input.folderId,
             tagNames: normalizeTags(input.tags),
@@ -278,7 +278,7 @@ export function registerBlogMcpTools(server: McpServer) {
           url: input.url,
         });
 
-        return toToolText({ owner, post });
+        return toToolText({ owner, ...result });
       } catch (error) {
         return toToolError(error instanceof ContentDraftError ? error : error);
       }
@@ -302,7 +302,7 @@ export function registerBlogMcpTools(server: McpServer) {
     async (input) => {
       try {
         const owner = await resolveMcpOwner(input);
-        const post = await createDraftFromImage({
+        const result = await createDraftFromImage({
           imageUrl: input.imageUrl,
           options: {
             folderId: input.folderId,
@@ -313,7 +313,7 @@ export function registerBlogMcpTools(server: McpServer) {
           prompt: input.prompt,
         });
 
-        return toToolText({ owner, post });
+        return toToolText({ owner, ...result });
       } catch (error) {
         return toToolError(error instanceof ContentDraftError ? error : error);
       }

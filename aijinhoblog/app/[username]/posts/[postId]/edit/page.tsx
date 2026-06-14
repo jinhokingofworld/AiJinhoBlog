@@ -11,10 +11,14 @@ type Props = {
     username: string;
     postId: string;
   }>;
+  searchParams?: Promise<{
+    import?: string;
+  }>;
 };
 
-export default async function EditPostPage({ params }: Props) {
+export default async function EditPostPage({ params, searchParams }: Props) {
   const { username, postId } = await params;
+  const query = await searchParams;
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -48,7 +52,7 @@ export default async function EditPostPage({ params }: Props) {
 
   return (
     <PageFrame paddingClassName="py-10">
-      <section className="mx-auto max-w-2xl border border-zinc-300 bg-white p-6">
+      <section className="mx-auto max-w-4xl border border-zinc-300 bg-white p-6">
         <h1 className="text-2xl font-semibold tracking-normal">글 수정</h1>
         <div className="mt-6">
           <PostForm
@@ -68,6 +72,7 @@ export default async function EditPostPage({ params }: Props) {
               id: folder.id,
               name: folder.name,
             }))}
+            initialActiveTab={query?.import === "external" ? "import" : "write"}
             mode="edit"
             username={username}
           />

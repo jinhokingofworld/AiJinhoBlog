@@ -14,6 +14,24 @@ import { fail } from "@/backend/http";
 
 export const runtime = "nodejs";
 
+function normalizeReturnTo(value: string | null, fallback: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("://")) {
+    return fallback;
+  }
+
+  return value;
+}
+
+function createAppRedirect(requestUrl: string, returnTo: string, params: Record<string, string>) {
+  const url = new URL(returnTo, new URL(requestUrl).origin);
+
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+
+  return url;
+}
+
 export async function GET(request: Request) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;
@@ -22,17 +40,31 @@ export async function GET(request: Request) {
     return fail("로그인이 필요합니다.", 401);
   }
 
+  const requestUrl = new URL(request.url);
+  const returnTo = normalizeReturnTo(
+    requestUrl.searchParams.get("returnTo"),
+    `/${user.username}/settings/connections`,
+  );
+
   try {
     const redirectUrl = createDropboxOAuthAuthorizeUrl({
-      origin: new URL(request.url).origin,
-      state: createDropboxOAuthState(user.id),
+      origin: requestUrl.origin,
+      state: createDropboxOAuthState(user.id, {
+        returnTo,
+      }),
     });
     const response = NextResponse.redirect(redirectUrl);
 
     return attachRefreshedSessionCookie(response, auth);
   } catch (error) {
     if (error instanceof DropboxOAuthConfigError) {
-      return failWithRefreshedSession(error.message, auth, 500);
+      const response = NextResponse.redirect(
+        createAppRedirect(request.url, returnTo, {
+          error: error.message,
+        }),
+      );
+
+      return attachRefreshedSessionCookie(response, auth);
     }
 
     return failWithRefreshedSession("Dropbox 연결을 시작하지 못했습니다.", auth, 502);

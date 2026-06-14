@@ -5,6 +5,7 @@ import {
 } from "@/backend/auth";
 import { fail, json, readJson } from "@/backend/http";
 import { deleteOwnerPost, PostServiceError, updateOwnerPost } from "@/backend/posts";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 import { parsePostPayload } from "@/backend/validation";
 
 export const runtime = "nodejs";
@@ -32,11 +33,21 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   try {
-    const post = await updateOwnerPost(user.id, postId, parsed.value);
-    const response = json({ post });
+    await enforceAiRateLimit({
+      endpoint: "post.update",
+      userId: user.id,
+    });
+    const result = await updateOwnerPost(user.id, postId, parsed.value);
+    const response = json(result);
 
     return attachRefreshedSessionCookie(response, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     if (error instanceof PostServiceError) {
       return failWithRefreshedSession(error.message, auth, error.status);
     }
@@ -55,11 +66,21 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   const { postId } = await params;
   try {
+    await enforceAiRateLimit({
+      endpoint: "post.delete",
+      userId: user.id,
+    });
     const result = await deleteOwnerPost(user.id, postId);
     const response = json(result);
 
     return attachRefreshedSessionCookie(response, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     if (error instanceof PostServiceError) {
       return failWithRefreshedSession(error.message, auth, error.status);
     }

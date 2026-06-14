@@ -1,4 +1,9 @@
 import type { Prisma } from "@/backend/generated/prisma";
+import {
+  deletePostVectorIndex as defaultDeletePostVectorIndex,
+  syncPostVectorIndex as defaultSyncPostVectorIndex,
+  type VectorPipelineResult,
+} from "@/backend/ai-indexing";
 import type { PostStatusInput, PostVisibilityInput } from "@/backend/validation";
 import { resolvePostFolderId } from "@/backend/folders";
 import { prisma } from "@/backend/prisma";
@@ -77,6 +82,7 @@ type CommentRecord = {
 
 type PostRecord = {
   id: string;
+  authorId: string;
   title: string;
   excerpt: string | null;
   content: string;
@@ -96,6 +102,16 @@ type PostRecord = {
     comments: number;
   };
   comments?: CommentRecord[];
+};
+
+type PostVectorInput = Pick<
+  PostRecord,
+  "authorId" | "content" | "excerpt" | "folderId" | "id" | "status" | "title" | "visibility"
+>;
+
+type PostServiceDependencies = {
+  deletePostVectorIndex?: typeof defaultDeletePostVectorIndex;
+  syncPostVectorIndex?: typeof defaultSyncPostVectorIndex;
 };
 
 export function normalizePostSort(value: string | null): PostListSort {
@@ -163,7 +179,11 @@ export function createPostListFilterWhere({
   }
 
   if (search.keyword) {
-    where.OR = [{ title: { contains: search.keyword } }, { excerpt: { contains: search.keyword } }];
+    where.OR = [
+      { title: { contains: search.keyword } },
+      { excerpt: { contains: search.keyword } },
+      { content: { contains: search.keyword } },
+    ];
   }
 
   const tagList = Array.from(tags);
@@ -280,6 +300,13 @@ export function serializePost(post: PostRecord) {
   };
 }
 
+export type SerializedPost = ReturnType<typeof serializePost>;
+
+export type PostMutationResult = {
+  aiPipeline: VectorPipelineResult;
+  post: SerializedPost;
+};
+
 export function toPostTagCreate(tagNames: string[]) {
   return tagNames.map((name) => ({
     tag: {
@@ -301,7 +328,26 @@ export class PostServiceError extends Error {
   }
 }
 
-export async function createOwnerPost(ownerId: string, input: PostInput) {
+async function syncPostVector(post: PostVectorInput, dependencies: PostServiceDependencies = {}) {
+  const syncPostVectorIndex = dependencies.syncPostVectorIndex ?? defaultSyncPostVectorIndex;
+
+  return syncPostVectorIndex(post);
+}
+
+async function deletePostVector(
+  post: Pick<PostVectorInput, "authorId" | "id">,
+  dependencies: PostServiceDependencies = {},
+) {
+  const deletePostVectorIndex = dependencies.deletePostVectorIndex ?? defaultDeletePostVectorIndex;
+
+  return deletePostVectorIndex(post);
+}
+
+export async function createOwnerPost(
+  ownerId: string,
+  input: PostInput,
+  dependencies: PostServiceDependencies = {},
+): Promise<PostMutationResult> {
   const folder = await resolvePostFolderId(ownerId, input.folderId);
 
   if (!folder.ok) {
@@ -324,11 +370,20 @@ export async function createOwnerPost(ownerId: string, input: PostInput) {
     },
     include: postSummaryInclude,
   });
+  const aiPipeline = await syncPostVector(post, dependencies);
 
-  return serializePost(post);
+  return {
+    aiPipeline,
+    post: serializePost(post),
+  };
 }
 
-export async function updateOwnerPost(ownerId: string, postId: string, input: PostInput) {
+export async function updateOwnerPost(
+  ownerId: string,
+  postId: string,
+  input: PostInput,
+  dependencies: PostServiceDependencies = {},
+): Promise<PostMutationResult> {
   const post = await prisma.post.findUnique({
     where: {
       id: postId,
@@ -378,17 +433,26 @@ export async function updateOwnerPost(ownerId: string, postId: string, input: Po
       include: postDetailInclude,
     }),
   ]);
+  const aiPipeline = await syncPostVector(updatedPost, dependencies);
 
-  return serializePost(updatedPost);
+  return {
+    aiPipeline,
+    post: serializePost(updatedPost),
+  };
 }
 
-export async function deleteOwnerPost(ownerId: string, postId: string) {
+export async function deleteOwnerPost(
+  ownerId: string,
+  postId: string,
+  dependencies: PostServiceDependencies = {},
+) {
   const post = await prisma.post.findUnique({
     where: {
       id: postId,
     },
     select: {
       authorId: true,
+      id: true,
     },
   });
 
@@ -400,6 +464,12 @@ export async function deleteOwnerPost(ownerId: string, postId: string) {
     throw new PostServiceError("게시글 작성자만 삭제할 수 있습니다.", 403);
   }
 
+  const aiPipeline = await deletePostVector(post, dependencies);
+
+  if (aiPipeline.status === "FAILED") {
+    throw new PostServiceError(aiPipeline.message, 502);
+  }
+
   await prisma.post.delete({
     where: {
       id: postId,
@@ -407,6 +477,7 @@ export async function deleteOwnerPost(ownerId: string, postId: string) {
   });
 
   return {
+    aiPipeline,
     ok: true,
   };
 }

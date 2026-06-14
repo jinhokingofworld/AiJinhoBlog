@@ -41,6 +41,11 @@ export type DropboxMarkdownSyncResult = {
   totalRemoteFiles: number;
 };
 
+export type DropboxMarkdownDeleteResult = {
+  deleted: Array<DropboxVectorPipelineResult & { documentId: string; pathDisplay: string }>;
+  failed: Array<DropboxVectorPipelineResult & { documentId: string; pathDisplay: string }>;
+};
+
 type PipelineDependencies = {
   dropboxClient?: ReturnType<typeof createDropboxMarkdownClient>;
   embeddingClient?: EmbeddingClient;
@@ -734,6 +739,50 @@ export async function syncDropboxMarkdownDocuments(
     } else {
       result.failed.push(item);
     }
+  }
+
+  return result;
+}
+
+export async function deleteOwnerDropboxMarkdownKnowledge(
+  ownerId: string,
+  dependencies: Pick<PipelineDependencies, "prisma" | "vectorStore"> = {},
+): Promise<DropboxMarkdownDeleteResult> {
+  const prisma = dependencies.prisma ?? defaultPrisma;
+  const result: DropboxMarkdownDeleteResult = {
+    deleted: [],
+    failed: [],
+  };
+  const documents = await prisma.dropboxMarkdownDocument.findMany({
+    where: {
+      ownerId,
+    },
+    select: {
+      id: true,
+      ownerId: true,
+      pathDisplay: true,
+    },
+  });
+
+  for (const document of documents) {
+    const deleted = await deleteDropboxMarkdownVectorIndex(document, dependencies);
+    const item = {
+      ...deleted,
+      documentId: document.id,
+      pathDisplay: document.pathDisplay,
+    };
+
+    if (deleted.status !== "DELETED") {
+      result.failed.push(item);
+      continue;
+    }
+
+    await prisma.dropboxMarkdownDocument.delete({
+      where: {
+        id: document.id,
+      },
+    });
+    result.deleted.push(item);
   }
 
   return result;

@@ -34,9 +34,13 @@ describe("posts", () => {
     expect(normalizePostTagFilter("")).toBeNull();
   });
 
-  it("creates title and excerpt search filters", () => {
+  it("creates title, excerpt, and content search filters", () => {
     expect(createPostListFilterWhere({ query: "AI", tag: "blog" })).toEqual({
-      OR: [{ title: { contains: "AI" } }, { excerpt: { contains: "AI" } }],
+      OR: [
+        { title: { contains: "AI" } },
+        { excerpt: { contains: "AI" } },
+        { content: { contains: "AI" } },
+      ],
       tags: {
         some: {
           tag: {
@@ -59,7 +63,11 @@ describe("posts", () => {
     });
 
     expect(createPostListFilterWhere({ query: "AI #blog" })).toEqual({
-      OR: [{ title: { contains: "AI" } }, { excerpt: { contains: "AI" } }],
+      OR: [
+        { title: { contains: "AI" } },
+        { excerpt: { contains: "AI" } },
+        { content: { contains: "AI" } },
+      ],
       tags: {
         some: {
           tag: {

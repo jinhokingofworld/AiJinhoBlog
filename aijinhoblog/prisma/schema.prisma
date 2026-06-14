@@ -24,8 +24,11 @@ model User {
   vectorIndexes                PostVectorIndex[]
   dropboxMarkdownDocuments     DropboxMarkdownDocument[]
   dropboxMarkdownVectorIndexes DropboxMarkdownVectorIndex[]
+  notionPageDocuments          NotionPageDocument[]
+  notionPageVectorIndexes      NotionPageVectorIndex[]
   externalKnowledgeConnections ExternalKnowledgeConnection[]
   aiRequestLogs                AiRequestLog[]
+  aiRateLimitBuckets           AiRateLimitBucket[]
   writingStyleProfile          WritingStyleProfile?
   writingRefactorResults       WritingRefactorResult[]
   createdAt                    DateTime                     @default(now())
@@ -213,6 +216,45 @@ model DropboxMarkdownVectorIndex {
   @@index([updatedAt])
 }
 
+model NotionPageDocument {
+  id             String                 @id @default(cuid())
+  ownerId        String
+  owner          User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  notionPageId   String                 @db.VarChar(191)
+  title          String                 @db.VarChar(255)
+  url            String?                @db.VarChar(1024)
+  lastEditedAt   DateTime?
+  contentHash    String?                @db.Char(64)
+  plainText      String                 @db.LongText
+  vectorIndex    NotionPageVectorIndex?
+  aiRequestLogs  AiRequestLog[]
+  lastSyncedAt   DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([ownerId, notionPageId])
+  @@index([ownerId, updatedAt])
+}
+
+model NotionPageVectorIndex {
+  id            String              @id @default(cuid())
+  documentId    String              @unique
+  document      NotionPageDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  status        VectorIndexStatus   @default(PENDING)
+  contentHash   String?             @db.Char(64)
+  chunkCount    Int                 @default(0)
+  chunkIds      Json?
+  errorMessage  String?             @db.Text
+  lastIndexedAt DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([ownerId, status])
+  @@index([updatedAt])
+}
+
 model ExternalKnowledgeConnection {
   id                     String                            @id @default(cuid())
   ownerId                String
@@ -249,14 +291,31 @@ model AiRequestLog {
   post                      Post?                    @relation(fields: [postId], references: [id], onDelete: SetNull)
   dropboxMarkdownDocumentId String?
   dropboxMarkdownDocument   DropboxMarkdownDocument? @relation(fields: [dropboxMarkdownDocumentId], references: [id], onDelete: SetNull)
+  notionPageDocumentId      String?
+  notionPageDocument        NotionPageDocument?      @relation(fields: [notionPageDocumentId], references: [id], onDelete: SetNull)
   userId                    String?
   user                      User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt                 DateTime                 @default(now())
 
   @@index([postId, createdAt])
   @@index([dropboxMarkdownDocumentId, createdAt])
+  @@index([notionPageDocumentId, createdAt])
   @@index([userId, createdAt])
   @@index([purpose, status, createdAt])
+}
+
+model AiRateLimitBucket {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint     String   @db.VarChar(120)
+  windowStart  DateTime
+  requestCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, endpoint, windowStart])
+  @@index([userId, endpoint, windowStart])
 }
 
 model WritingStyleProfile {

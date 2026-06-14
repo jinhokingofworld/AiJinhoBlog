@@ -1,6 +1,10 @@
 import type { Prisma, PrismaClient } from "@/backend/generated/prisma";
 
 import {
+  syncPostVectorIndex as defaultSyncPostVectorIndex,
+  type VectorPipelineResult,
+} from "@/backend/ai-indexing";
+import {
   GenerationProviderError,
   GenerationSkippedError,
   createOpenAIGenerationClient,
@@ -12,6 +16,7 @@ import { prisma as defaultPrisma } from "@/backend/prisma";
 type AgentDependencies = {
   generationClient?: GenerationClient;
   prisma?: PrismaClient;
+  syncPostVectorIndex?: typeof defaultSyncPostVectorIndex;
 };
 
 const STYLE_PROFILE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -424,11 +429,12 @@ export async function applyRefactorResult({
   resultId,
   dependencies = {},
 }: {
-  dependencies?: Pick<AgentDependencies, "prisma">;
+  dependencies?: Pick<AgentDependencies, "prisma" | "syncPostVectorIndex">;
   ownerId: string;
   resultId: string;
 }) {
   const prisma = dependencies.prisma ?? defaultPrisma;
+  const syncPostVectorIndex = dependencies.syncPostVectorIndex ?? defaultSyncPostVectorIndex;
   const result = await prisma.writingRefactorResult.findFirst({
     where: {
       id: resultId,
@@ -476,8 +482,12 @@ export async function applyRefactorResult({
       },
     }),
   ]);
+  const aiPipeline: VectorPipelineResult = await syncPostVectorIndex(post);
 
-  return post;
+  return {
+    aiPipeline,
+    post,
+  };
 }
 
 export function toWritingAgentErrorResponse(error: unknown) {

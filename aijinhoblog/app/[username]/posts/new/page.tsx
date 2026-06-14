@@ -9,10 +9,14 @@ type Props = {
   params: Promise<{
     username: string;
   }>;
+  searchParams?: Promise<{
+    import?: string;
+  }>;
 };
 
-export default async function NewPostPage({ params }: Props) {
+export default async function NewPostPage({ params, searchParams }: Props) {
   const { username } = await params;
+  const query = await searchParams;
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -28,7 +32,7 @@ export default async function NewPostPage({ params }: Props) {
 
   return (
     <PageFrame paddingClassName="py-10">
-      <section className="mx-auto max-w-2xl border border-zinc-300 bg-white p-6">
+      <section className="mx-auto max-w-4xl border border-zinc-300 bg-white p-6">
         <h1 className="text-2xl font-semibold tracking-normal">글쓰기</h1>
         <div className="mt-6">
           <PostForm
@@ -36,6 +40,7 @@ export default async function NewPostPage({ params }: Props) {
               id: folder.id,
               name: folder.name,
             }))}
+            initialActiveTab={query?.import === "external" ? "import" : "write"}
             mode="create"
             username={username}
           />

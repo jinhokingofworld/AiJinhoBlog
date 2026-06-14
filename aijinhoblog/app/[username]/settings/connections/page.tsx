@@ -73,6 +73,7 @@ export default async function ExternalConnectionsSettingsPage({ params, searchPa
           <ExternalConnectionsClient
             initialConnections={connections}
             message={createMessage(resolvedSearchParams)}
+            username={username}
           />
         </div>
       </section>

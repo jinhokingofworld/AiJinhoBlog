@@ -24,12 +24,12 @@ export async function POST(_request: Request, { params }: Params) {
   const { resultId } = await params;
 
   try {
-    const post = await applyRefactorResult({
+    const result = await applyRefactorResult({
       ownerId: user.id,
       resultId,
     });
 
-    return jsonWithRefreshedSession({ post }, auth);
+    return jsonWithRefreshedSession(result, auth);
   } catch (error) {
     const response = toWritingAgentErrorResponse(error);
 

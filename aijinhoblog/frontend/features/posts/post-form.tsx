@@ -31,15 +31,26 @@ type DuplicateCandidate = {
     id: string;
     path: string | null;
     title: string;
-    type: "DROPBOX_MD" | "POST";
+    type: "DROPBOX_MD" | "NOTION_PAGE" | "POST";
     url: string | null;
   };
+};
+
+type DropboxMarkdownFile = {
+  id: string;
+  name: string;
+  pathDisplay: string;
+  pathLower: string;
+  rev: string | null;
+  serverModified: string | null;
+  size: number | null;
 };
 
 type Props = {
   username: string;
   mode: "create" | "edit";
   folders: FolderOption[];
+  initialActiveTab?: "import" | "write";
   initialPost?: InitialPost;
 };
 
@@ -54,7 +65,27 @@ function createInitialState(folders: FolderOption[], initialPost?: InitialPost) 
   };
 }
 
-export function PostForm({ username, mode, folders, initialPost }: Props) {
+function createTitleFromFileName(fileName: string) {
+  return fileName.replace(/\.(md|markdown|txt)$/i, "").trim() || fileName;
+}
+
+async function readApiJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+
+  if (!text) {
+    return {} as T;
+  }
+
+  return JSON.parse(text) as T;
+}
+
+export function PostForm({
+  username,
+  mode,
+  folders,
+  initialActiveTab = "write",
+  initialPost,
+}: Props) {
   const router = useRouter();
   const initialState = useMemo(
     () => createInitialState(folders, initialPost),
@@ -66,11 +97,17 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
   const [tags, setTags] = useState(initialState.tags);
   const [visibility, setVisibility] = useState<PostVisibilityInput>(initialState.visibility);
   const [folderId, setFolderId] = useState(initialState.folderId);
+  const [activeTab, setActiveTab] = useState<"import" | "write">(initialActiveTab);
   const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
   const [duplicateCheckedKey, setDuplicateCheckedKey] = useState("");
+  const [dropboxFiles, setDropboxFiles] = useState<DropboxMarkdownFile[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [importingPath, setImportingPath] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importNotice, setImportNotice] = useState("");
+  const [importError, setImportError] = useState("");
   const isDirty =
     title !== initialState.title ||
     excerpt !== initialState.excerpt ||
@@ -84,6 +121,13 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     title,
   });
   const hasFreshDuplicateCheck = duplicateCheckedKey === duplicateKey;
+  const importReturnPath =
+    mode === "create"
+      ? `/${username}/posts/new?import=external`
+      : `/${username}/posts/${initialPost?.id}/edit?import=external`;
+  const dropboxStartHref = `/api/me/connections/dropbox/start?returnTo=${encodeURIComponent(
+    importReturnPath,
+  )}`;
 
   useEffect(() => {
     if (!isDirty) {
@@ -101,6 +145,86 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [isDirty]);
+
+  function applyImportedText(fileName: string, text: string) {
+    const nextTitle = createTitleFromFileName(fileName);
+
+    if (!title.trim()) {
+      setTitle(nextTitle);
+    }
+
+    setContent(text);
+    setActiveTab("write");
+    setDuplicateCandidates([]);
+    setDuplicateCheckedKey("");
+    setImportNotice(`${fileName} 내용을 본문에 가져왔습니다.`);
+    setImportError("");
+  }
+
+  async function loadDropboxFiles() {
+    setImportLoading(true);
+    setImportError("");
+    setImportNotice("");
+
+    const response = await fetch("/api/me/dropbox/markdown");
+    const result = await readApiJson<{
+      error?: string;
+      files?: DropboxMarkdownFile[];
+    }>(response);
+
+    setImportLoading(false);
+
+    if (!response.ok || !result.files) {
+      setImportError(result.error ?? "Dropbox Markdown 목록을 불러오지 못했습니다.");
+      return;
+    }
+
+    setDropboxFiles(result.files);
+    setImportNotice(`Dropbox Markdown ${result.files.length}개를 불러왔습니다.`);
+  }
+
+  async function importDropboxFile(file: DropboxMarkdownFile) {
+    setImportingPath(file.pathLower);
+    setImportError("");
+    setImportNotice("");
+
+    const response = await fetch(
+      `/api/me/dropbox/markdown/content?path=${encodeURIComponent(file.pathLower)}`,
+    );
+    const result = await readApiJson<{
+      content?: string;
+      error?: string;
+      file?: DropboxMarkdownFile;
+    }>(response);
+
+    setImportingPath("");
+
+    if (!response.ok || typeof result.content !== "string") {
+      setImportError(result.error ?? "Dropbox Markdown 파일을 읽지 못했습니다.");
+      return;
+    }
+
+    applyImportedText(result.file?.name ?? file.name, result.content);
+  }
+
+  async function importLocalFile(file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    setImportError("");
+    setImportNotice("");
+
+    try {
+      applyImportedText(file.name, await file.text());
+    } catch {
+      setImportError("로컬 파일을 읽지 못했습니다.");
+    }
+  }
+
+  function startDropboxConnection() {
+    window.location.assign(dropboxStartHref);
+  }
 
   async function checkDuplicateCandidates() {
     if (!title.trim() && !content.trim()) {
@@ -257,6 +381,115 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
         void savePost("PUBLISHED");
       }}
     >
+      <div className="border border-zinc-300">
+        <div className="flex border-b border-zinc-300 bg-zinc-50">
+          <button
+            className={`flex-1 px-3 py-2 text-sm font-medium ${
+              activeTab === "write" ? "bg-white text-zinc-950" : "text-zinc-600 hover:bg-white"
+            }`}
+            onClick={() => setActiveTab("write")}
+            type="button"
+          >
+            직접 작성
+          </button>
+          <button
+            className={`flex-1 px-3 py-2 text-sm font-medium ${
+              activeTab === "import" ? "bg-white text-zinc-950" : "text-zinc-600 hover:bg-white"
+            }`}
+            onClick={() => setActiveTab("import")}
+            type="button"
+          >
+            외부에서 글 가져오기
+          </button>
+        </div>
+
+        {activeTab === "import" ? (
+          <div className="space-y-4 p-4">
+            {importNotice ? (
+              <p className="border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-800">
+                {importNotice}
+              </p>
+            ) : null}
+            {importError ? (
+              <p className="border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {importError}
+              </p>
+            ) : null}
+
+            <section className="border border-zinc-300 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-sm font-semibold">Dropbox에서 가져오기</h2>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="border border-zinc-300 px-3 py-2 text-center text-sm font-medium hover:bg-zinc-50"
+                    onClick={startDropboxConnection}
+                    type="button"
+                  >
+                    Dropbox 연결
+                  </button>
+                  <button
+                    className="border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:text-zinc-300"
+                    disabled={importLoading}
+                    onClick={() => void loadDropboxFiles()}
+                    type="button"
+                  >
+                    {importLoading ? "불러오는 중" : "Markdown 목록 불러오기"}
+                  </button>
+                </div>
+              </div>
+
+              {dropboxFiles.length ? (
+                <div className="mt-4 max-h-72 overflow-y-auto border border-zinc-200">
+                  {dropboxFiles.map((file) => (
+                    <div
+                      className="flex flex-col gap-2 border-b border-zinc-200 p-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+                      key={file.id}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{file.name}</p>
+                        <p className="mt-1 truncate text-xs text-zinc-500">{file.pathDisplay}</p>
+                      </div>
+                      <button
+                        className="shrink-0 border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:text-zinc-300"
+                        disabled={importingPath === file.pathLower}
+                        onClick={() => void importDropboxFile(file)}
+                        type="button"
+                      >
+                        {importingPath === file.pathLower ? "가져오는 중" : "본문에 넣기"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+
+            <section className="border border-zinc-300 p-4">
+              <h2 className="text-sm font-semibold">Notion에서 가져오기</h2>
+              <p className="mt-1 text-sm text-zinc-600">
+                Notion OAuth와 page sync는 다음 단계입니다.
+              </p>
+              <button
+                className="mt-3 border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-400"
+                disabled
+                type="button"
+              >
+                준비 중
+              </button>
+            </section>
+
+            <section className="border border-zinc-300 p-4">
+              <h2 className="text-sm font-semibold">로컬에서 파일 가져오기</h2>
+              <input
+                accept=".md,.markdown,.txt,text/markdown,text/plain"
+                className="mt-3 block w-full text-sm"
+                onChange={(event) => void importLocalFile(event.target.files?.[0] ?? null)}
+                type="file"
+              />
+            </section>
+          </div>
+        ) : null}
+      </div>
+
       <div>
         <label className="text-sm font-medium" htmlFor="title">
           제목
@@ -420,7 +653,11 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-teal-700">
-                        {candidate.source.type === "POST" ? "게시글" : "Dropbox Markdown"}
+                        {candidate.source.type === "POST"
+                          ? "게시글"
+                          : candidate.source.type === "DROPBOX_MD"
+                            ? "Dropbox Markdown"
+                            : "Notion"}
                       </p>
                       {candidate.source.url ? (
                         <a

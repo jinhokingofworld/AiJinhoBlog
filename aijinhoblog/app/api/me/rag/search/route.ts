@@ -7,6 +7,7 @@ import { EmbeddingProviderError, EmbeddingSkippedError } from "@/backend/ai-embe
 import { ChromaVectorStoreError } from "@/backend/ai-vector-store";
 import { readJson } from "@/backend/http";
 import { searchKnowledgeSources } from "@/backend/rag";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    await enforceAiRateLimit({
+      endpoint: "rag.search",
+      userId: user.id,
+    });
     const sources = await searchKnowledgeSources({
       limit: payload.limit,
       ownerId: user.id,
@@ -69,6 +74,12 @@ export async function POST(request: Request) {
 
     return jsonWithRefreshedSession({ sources }, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     const response = toRagErrorResponse(error);
 
     return failWithRefreshedSession(response.message, auth, response.status);

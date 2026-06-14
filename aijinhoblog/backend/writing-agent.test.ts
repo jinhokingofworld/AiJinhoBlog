@@ -180,6 +180,12 @@ describe("writing agent", () => {
     const post = await applyRefactorResult({
       dependencies: {
         prisma: prisma as never,
+        syncPostVectorIndex: vi.fn(async () => ({
+          chunkCount: 1,
+          chunkIds: ["post:post-1:chunk:0"],
+          message: "indexed",
+          status: "INDEXED",
+        })),
       },
       ownerId: "user-1",
       resultId: "result-1",
@@ -194,8 +200,13 @@ describe("writing agent", () => {
       }),
     );
     expect(post).toMatchObject({
-      content: expect.stringContaining("generated:"),
-      id: "post-1",
+      aiPipeline: {
+        status: "INDEXED",
+      },
+      post: {
+        content: expect.stringContaining("generated:"),
+        id: "post-1",
+      },
     });
   });
 });

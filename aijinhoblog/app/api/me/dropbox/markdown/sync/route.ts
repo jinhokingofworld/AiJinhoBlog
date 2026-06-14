@@ -13,9 +13,11 @@ import {
   ExternalConnectionRequiredError,
   getDropboxConnectionAccessToken,
   markExternalConnectionError,
+  markExternalConnectionOperationError,
   markExternalConnectionSynced,
 } from "@/backend/external-connections";
 import { fail, json, readJson } from "@/backend/http";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -65,6 +67,14 @@ function toDropboxSyncErrorResponse(error: unknown) {
   };
 }
 
+function isDropboxConnectionError(error: unknown) {
+  return (
+    error instanceof DropboxAccessTokenMissingError ||
+    error instanceof ExternalConnectionRequiredError ||
+    (error instanceof DropboxConnectorError && error.status === 401)
+  );
+}
+
 export async function POST(request: Request) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;
@@ -76,6 +86,10 @@ export async function POST(request: Request) {
   const options = parseSyncPayload(await readJson(request));
 
   try {
+    await enforceAiRateLimit({
+      endpoint: "dropbox.markdown.sync",
+      userId: user.id,
+    });
     const accessToken = await getDropboxConnectionAccessToken(user.id);
     const sync = await syncDropboxMarkdownDocuments(user.id, options, {
       dropboxClient: createDropboxMarkdownClient({ accessToken }),
@@ -89,8 +103,16 @@ export async function POST(request: Request) {
 
     return attachRefreshedSessionCookie(response, auth);
   } catch (error) {
-    if (!(error instanceof ExternalConnectionRequiredError)) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
+    if (isDropboxConnectionError(error) && !(error instanceof ExternalConnectionRequiredError)) {
       await markExternalConnectionError(user.id, "DROPBOX", error);
+    } else if (!(error instanceof ExternalConnectionRequiredError)) {
+      await markExternalConnectionOperationError(user.id, "DROPBOX", error);
     }
 
     const response = toDropboxSyncErrorResponse(error);

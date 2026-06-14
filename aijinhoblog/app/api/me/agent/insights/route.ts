@@ -3,6 +3,7 @@ import {
   getCurrentUserOrRefresh,
   jsonWithRefreshedSession,
 } from "@/backend/auth";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 import { getWritingInsights, toWritingAgentErrorResponse } from "@/backend/writing-agent";
 
 export const runtime = "nodejs";
@@ -16,10 +17,20 @@ export async function GET() {
   }
 
   try {
+    await enforceAiRateLimit({
+      endpoint: "agent.insights",
+      userId: user.id,
+    });
     const insights = await getWritingInsights(user.id);
 
     return jsonWithRefreshedSession({ insights }, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     const response = toWritingAgentErrorResponse(error);
 
     return failWithRefreshedSession(response.message, auth, response.status);

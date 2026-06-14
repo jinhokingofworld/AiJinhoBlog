@@ -25,6 +25,8 @@ Use the root `.env.example` as the source of shared configuration names. Product
 - `EXTERNAL_CONNECTION_ENCRYPTION_KEY`: encryption key for user-owned external provider tokens
 - `DROPBOX_ACCESS_TOKEN`: development-only fallback for the CLI Dropbox sync script
 - `AI_HTTP_TIMEOUT_MS`, `AI_HTTP_TOTAL_ATTEMPTS`, `AI_HTTP_RETRY_DELAY_MS`: external AI request controls
+- `AI_RATE_LIMIT_WINDOW_MS`: per-user endpoint rate limit window, default `60000`
+- `AI_RATE_LIMIT_REQUESTS`: allowed AI requests per user/endpoint/window, default `20`
 - `AIJINHOBLOG_MCP_OWNER_*`: default owner only for local or single-owner MCP sessions
 
 ## Release Steps
@@ -64,11 +66,11 @@ npm --prefix aijinhoblog run start
 - Ask a memory question and verify every source belongs to the current user.
 - Run the Agent page and verify recommendations, rewrite, refactor, and apply-to-post.
 - Confirm AI request logs are created for RAG and indexing flows.
+- Confirm repeated AI endpoint calls return 429 after the configured quota.
 
 ## Known Limits
 
 - ChromaDB must be backed up separately from MySQL.
 - Dropbox sync uses per-user OAuth connections and currently stays read-only.
 - MCP tools require an explicit owner in tool input or `AIJINHOBLOG_MCP_OWNER_*`.
-- AI calls are retried with bounded timeout and attempts, but there is no per-user rate limit yet.
-- Dependency audit advisories from framework or transitive packages are tracked in issue #41.
+- AI calls are retried with bounded timeout and attempts, and per-user endpoint rate limits are stored in MySQL.

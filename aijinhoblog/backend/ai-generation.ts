@@ -3,8 +3,11 @@ import {
   type RetryFetchResult,
   fetchJsonWithRetry,
 } from "@/backend/ai-http";
+import "@/backend/env";
 
 export const DEFAULT_RAG_MODEL = "gpt-4o-mini";
+export const RAG_SYSTEM_PROMPT =
+  "너는 개인 블로그와 Markdown 문서 기반 기억 검색 도우미다. 제공된 근거 안에서만 답하고, 질문과 직접 관련 있는 근거만 사용한다. 관련 없는 근거는 무시하고, 근거에 없는 프로젝트, 기술, 활동을 추측해서 보태지 않는다. 근거가 부족하면 부족하다고 말한다. 답변은 한국어 Plain Text로만 작성한다. Markdown 문법을 사용하지 않는다. 제목 마크다운, 목록 기호, 번호 목록, 표, 코드블록, 굵게/기울임, 링크 문법을 쓰지 않는다. HTML 태그도 쓰지 않는다. 문단이 필요하면 빈 줄만 사용한다.";
 
 export class GenerationSkippedError extends Error {
   constructor(message: string) {
@@ -99,8 +102,7 @@ export function createOpenAIGenerationClient(options: { apiKey?: string; model?:
               messages: [
                 {
                   role: "system",
-                  content:
-                    "너는 개인 블로그와 Markdown 문서 기반 기억 검색 도우미다. 제공된 근거 안에서만 답하고, 근거가 부족하면 부족하다고 말한다. 답변은 한국어로 간결하게 작성한다.",
+                  content: RAG_SYSTEM_PROMPT,
                 },
                 {
                   role: "user",

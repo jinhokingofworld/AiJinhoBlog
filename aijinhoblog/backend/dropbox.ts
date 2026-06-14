@@ -127,6 +127,12 @@ function createAuthHeaders(accessToken: string) {
   };
 }
 
+function createDropboxApiArgHeader(value: unknown) {
+  return JSON.stringify(value).replace(/[^\x20-\x7E]/g, (character) => {
+    return `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`;
+  });
+}
+
 function createDropboxError(operation: "download" | "list", error: unknown) {
   if (error instanceof DropboxConnectorError || error instanceof DropboxAccessTokenMissingError) {
     return error;
@@ -257,7 +263,7 @@ export function createDropboxMarkdownClient(
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Dropbox-API-Arg": JSON.stringify({
+            "Dropbox-API-Arg": createDropboxApiArgHeader({
               path: normalizedPath,
             }),
           },

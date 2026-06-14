@@ -5,6 +5,7 @@ import {
   DropboxOAuthConfigError,
   DropboxOAuthError,
   exchangeDropboxOAuthCode,
+  readDropboxOAuthState,
   verifyDropboxOAuthState,
 } from "@/backend/dropbox-oauth";
 import { upsertDropboxConnectionFromOAuth } from "@/backend/external-connections";
@@ -18,6 +19,24 @@ function createSettingsRedirect(
   params: Record<string, string>,
 ) {
   const url = new URL(`/${username}/settings/connections`, new URL(requestUrl).origin);
+
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+
+  return url;
+}
+
+function normalizeReturnTo(value: string | null, username: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("://")) {
+    return `/${username}/settings/connections`;
+  }
+
+  return value;
+}
+
+function createAppRedirect(requestUrl: string, returnTo: string, params: Record<string, string>) {
+  const url = new URL(returnTo, new URL(requestUrl).origin);
 
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
@@ -40,9 +59,12 @@ export async function GET(request: Request) {
   const oauthError =
     requestUrl.searchParams.get("error_description") ?? requestUrl.searchParams.get("error");
 
+  const statePayload = state ? readDropboxOAuthState(state, user.id) : null;
+  const returnTo = normalizeReturnTo(statePayload?.returnTo ?? null, user.username);
+
   if (oauthError) {
     const response = NextResponse.redirect(
-      createSettingsRedirect(user.username, request.url, {
+      createAppRedirect(request.url, returnTo, {
         error: oauthError,
       }),
     );
@@ -69,7 +91,7 @@ export async function GET(request: Request) {
     await upsertDropboxConnectionFromOAuth(user.id, tokens);
 
     const response = NextResponse.redirect(
-      createSettingsRedirect(user.username, request.url, {
+      createAppRedirect(request.url, returnTo, {
         connected: "dropbox",
       }),
     );
@@ -81,7 +103,7 @@ export async function GET(request: Request) {
         ? error.message
         : "Dropbox 연결을 저장하지 못했습니다.";
     const response = NextResponse.redirect(
-      createSettingsRedirect(user.username, request.url, {
+      createAppRedirect(request.url, returnTo, {
         error: message,
       }),
     );

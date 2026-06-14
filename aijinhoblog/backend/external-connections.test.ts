@@ -5,6 +5,7 @@ import {
   decryptExternalToken,
   encryptExternalToken,
   getExternalConnectionAccessToken,
+  markExternalConnectionOperationError,
   serializeExternalConnection,
 } from "@/backend/external-connections";
 
@@ -71,5 +72,34 @@ describe("external connection token storage", () => {
     await expect(
       getExternalConnectionAccessToken("user-1", "DROPBOX", prisma as never),
     ).rejects.toBeInstanceOf(ExternalConnectionRequiredError);
+  });
+
+  it("records operation errors without marking the provider disconnected", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const prisma = {
+      externalKnowledgeConnection: {
+        update,
+      },
+    };
+
+    await markExternalConnectionOperationError(
+      "user-1",
+      "DROPBOX",
+      new Error("Markdown parsing failed"),
+      prisma as never,
+    );
+
+    expect(update).toHaveBeenCalledWith({
+      where: {
+        ownerId_provider: {
+          ownerId: "user-1",
+          provider: "DROPBOX",
+        },
+      },
+      data: {
+        lastError: "Markdown parsing failed",
+        status: "CONNECTED",
+      },
+    });
   });
 });

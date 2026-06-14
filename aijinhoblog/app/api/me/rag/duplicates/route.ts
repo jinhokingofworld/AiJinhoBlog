@@ -7,6 +7,7 @@ import { EmbeddingProviderError, EmbeddingSkippedError } from "@/backend/ai-embe
 import { ChromaVectorStoreError } from "@/backend/ai-vector-store";
 import { readJson } from "@/backend/http";
 import { findDuplicateCandidates } from "@/backend/rag";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    await enforceAiRateLimit({
+      endpoint: "rag.duplicates",
+      userId: user.id,
+    });
     const candidates = await findDuplicateCandidates({
       content: payload.content,
       excerpt: payload.excerpt,
@@ -75,6 +80,12 @@ export async function POST(request: Request) {
 
     return jsonWithRefreshedSession({ candidates }, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     const response = toDuplicateErrorResponse(error);
 
     return failWithRefreshedSession(response.message, auth, response.status);

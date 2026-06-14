@@ -20,7 +20,7 @@ type MarkdownToken = {
   raw?: string;
   tokens?: MarkdownToken[];
   items?: MarkdownToken[];
-  header?: MarkdownToken[];
+  header?: boolean | MarkdownToken | MarkdownToken[];
   rows?: MarkdownToken[][];
 };
 
@@ -52,6 +52,18 @@ function stripHtml(value: string) {
     .replace(/<[^>]+>/g, " ");
 }
 
+function toMarkdownTokenList(value: unknown): MarkdownToken[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(toMarkdownTokenList);
+  }
+
+  if (value && typeof value === "object") {
+    return [value as MarkdownToken];
+  }
+
+  return [];
+}
+
 function extractMarkdownTokenText(token: MarkdownToken): string[] {
   if (token.type === "space" || token.type === "hr") {
     return [];
@@ -62,10 +74,10 @@ function extractMarkdownTokenText(token: MarkdownToken): string[] {
   }
 
   const nested = [
-    ...(token.tokens ?? []),
-    ...(token.items ?? []),
-    ...(token.header ?? []),
-    ...(token.rows?.flat() ?? []),
+    ...toMarkdownTokenList(token.tokens),
+    ...toMarkdownTokenList(token.items),
+    ...toMarkdownTokenList(token.header),
+    ...toMarkdownTokenList(token.rows),
   ];
 
   if (nested.length) {

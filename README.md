@@ -63,6 +63,7 @@ Docker Desktop이 꺼져 있으면 먼저 실행해야 합니다. MySQL 이미�
 - `GET /api/me/connections/dropbox/start`: Dropbox OAuth 연결 시작
 - `GET /api/me/connections/dropbox/callback`: Dropbox OAuth callback 처리
 - `DELETE /api/me/connections/dropbox`: Dropbox 연결 해제
+- `GET /api/me/dropbox/config`: Dropbox OAuth 앱 설정 상태와 redirect URI 조회
 - `GET /api/me/dropbox/markdown`: Dropbox Markdown 파일 목록 조회
 - `GET /api/me/dropbox/markdown/content?path={path}`: Dropbox Markdown 파일 본문 읽기
 - `POST /api/me/dropbox/markdown/sync`: Dropbox Markdown 문서 저장 및 ChromaDB 색인
@@ -110,6 +111,10 @@ npm run services:config
 
 Phase 8 이후 앱 안의 Dropbox Markdown 목록 조회와 동기화는 `/{username}/settings/connections`에서 연결한 로그인 사용자의 Dropbox OAuth 토큰으로만 실행됩니다. 저장된 문서와 ChromaDB vector metadata는 `ownerId`로 격리됩니다.
 
+글쓰기 화면의 `외부에서 글 가져오기` 탭에서는 사용자가 Dropbox에 로그인하고 앱 접근을 승인한 뒤 Markdown 파일을 본문으로 가져올 수 있습니다. 가져온 글을 게시글로 저장하면 기존 게시글 vector indexing 파이프라인을 통해 사용자별 RAG에 반영됩니다. 로컬 `.md`, `.markdown`, `.txt` 파일은 브라우저에서 바로 본문으로 가져올 수 있습니다.
+
+운영자는 Dropbox 개발자 콘솔의 앱 설정에 글쓰기 탭에 표시되는 Redirect URI를 정확히 등록해야 합니다. 로컬 기본값은 `http://localhost:3000/api/me/connections/dropbox/callback`이며, `localhost`와 `127.0.0.1`, `http`와 `https`, path 차이도 모두 다른 값으로 처리됩니다.
+
 개발용 CLI sync는 기존처럼 `DROPBOX_ACCESS_TOKEN`을 사용할 수 있습니다.
 
 ```bash
@@ -123,6 +128,8 @@ npm --prefix aijinhoblog run dropbox:sync -- --username {username}
 Phase 4 이후에는 `/{username}/memory`에서 게시글 chunk와 Dropbox Markdown chunk를 함께 검색해 자연어 질문에 답할 수 있습니다. 답변에는 근거가 된 게시글 링크 또는 Dropbox 문서 경로가 함께 표시됩니다.
 
 글쓰기 화면에서는 게시 전 유사 자료를 확인할 수 있습니다. 유사한 게시글이나 Dropbox Markdown 문서가 있으면 후보를 먼저 보여주고, 사용자는 확인 후 그대로 게시할 수 있습니다.
+
+게시글 생성, 수정, 삭제와 리팩토링 결과 반영은 ChromaDB vector 상태를 자동으로 갱신합니다. Dropbox 연결 해제 시에는 해당 사용자의 Dropbox Markdown 캐시와 vector도 함께 삭제합니다.
 
 ## 글쓰기 Agent
 
@@ -164,11 +171,15 @@ MCP owner는 tool 입력의 `ownerUsername`, `ownerEmail`, `ownerId`로 지정�
 - `OPENAI_API_KEY`: OpenAI API 키. 비어 있으면 게시글 CRUD는 유지하고 벡터 인덱싱은 `SKIPPED`로 기록
 - `OPENAI_EMBEDDING_MODEL`: embedding 모델명
 - `OPENAI_RAG_MODEL`: RAG 답변 생성 모델명
+- `AI_RATE_LIMIT_WINDOW_MS`: 사용자별 AI endpoint 제한 시간 창, 기본값 `60000`
+- `AI_RATE_LIMIT_REQUESTS`: 사용자별 endpoint/window 요청 허용 수, 기본값 `20`
 - `CHROMA_URL`: ChromaDB 서버 주소
 - `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름
-- `DROPBOX_APP_KEY`: 사용자별 Dropbox OAuth 연결에 사용하는 app key
-- `DROPBOX_APP_SECRET`: 사용자별 Dropbox OAuth 연결에 사용하는 app secret
+- `DROPBOX_APP_KEY`: 서버 공통 Dropbox OAuth app key
+- `DROPBOX_APP_SECRET`: 서버 공통 Dropbox OAuth app secret
 - `DROPBOX_OAUTH_REDIRECT_URI`: Dropbox app에 등록한 OAuth redirect URI
 - `DROPBOX_OAUTH_SCOPES`: Dropbox read-only scope 목록, 기본값 `files.metadata.read files.content.read`
 - `EXTERNAL_CONNECTION_ENCRYPTION_KEY`: 외부 provider access token과 refresh token 암호화 키
 - `DROPBOX_ACCESS_TOKEN`: 개발용 CLI Dropbox sync fallback token
+
+Notion은 `ExternalKnowledgeConnection`, `NotionPageDocument`, `NotionPageVectorIndex` 기반의 provider 확장 지점이 준비되어 있으며, 실제 Notion OAuth/sync adapter는 후속 구현 범위입니다.

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { syncDropboxMarkdownDocuments } from "@/backend/dropbox-indexing";
+import {
+  deleteOwnerDropboxMarkdownKnowledge,
+  syncDropboxMarkdownDocuments,
+} from "@/backend/dropbox-indexing";
 
 function createPrismaMock() {
   const documents = new Map<string, Record<string, unknown>>();
@@ -222,5 +225,48 @@ describe("syncDropboxMarkdownDocuments", () => {
     expect(result.deleted).toHaveLength(1);
     expect(deletedVectors).toEqual(["dropbox-md:old:chunk:0"]);
     expect(documents.has("/old.md")).toBe(false);
+  });
+
+  it("deletes all Dropbox knowledge for an owner on disconnect", async () => {
+    const { documents, prisma, vectorIndexes } = createPrismaMock();
+
+    documents.set("/note.md", {
+      id: "doc-note",
+      ownerId: "user-1",
+      pathDisplay: "/note.md",
+      pathLower: "/note.md",
+    });
+    documents.set("/other.md", {
+      id: "doc-other",
+      ownerId: "user-2",
+      pathDisplay: "/other.md",
+      pathLower: "/other.md",
+    });
+    vectorIndexes.set("doc-note", {
+      chunkIds: ["dropbox-md:note:chunk:0"],
+      contentHash: "hash",
+    });
+
+    const deletedVectors: string[] = [];
+    const result = await deleteOwnerDropboxMarkdownKnowledge("user-1", {
+      prisma: prisma as never,
+      vectorStore: {
+        delete: vi.fn(async (ids: string[]) => {
+          deletedVectors.push(...ids);
+
+          return {
+            durationMs: 1,
+            retryAttempts: 1,
+          };
+        }),
+        upsert: vi.fn(),
+      },
+    });
+
+    expect(result.deleted).toHaveLength(1);
+    expect(result.failed).toHaveLength(0);
+    expect(deletedVectors).toEqual(["dropbox-md:note:chunk:0"]);
+    expect(documents.has("/note.md")).toBe(false);
+    expect(documents.has("/other.md")).toBe(true);
   });
 });

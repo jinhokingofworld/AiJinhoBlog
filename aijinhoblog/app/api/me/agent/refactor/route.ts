@@ -4,6 +4,7 @@ import {
   jsonWithRefreshedSession,
 } from "@/backend/auth";
 import { readJson } from "@/backend/http";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 import { refactorForPublication, toWritingAgentErrorResponse } from "@/backend/writing-agent";
 
 export const runtime = "nodejs";
@@ -47,6 +48,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    await enforceAiRateLimit({
+      endpoint: "agent.refactor",
+      userId: user.id,
+    });
     const result = await refactorForPublication({
       mode: payload.mode,
       ownerId: user.id,
@@ -56,6 +61,12 @@ export async function POST(request: Request) {
 
     return jsonWithRefreshedSession({ result }, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     const response = toWritingAgentErrorResponse(error);
 
     return failWithRefreshedSession(response.message, auth, response.status);

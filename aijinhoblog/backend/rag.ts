@@ -21,7 +21,7 @@ import {
 import { buildPostIndexText, normalizeKnowledgeText } from "@/backend/ai-text";
 import { prisma as defaultPrisma } from "@/backend/prisma";
 
-export type KnowledgeSourceType = "DROPBOX_MD" | "POST";
+export type KnowledgeSourceType = "DROPBOX_MD" | "NOTION_PAGE" | "POST";
 
 export type KnowledgeSearchResult = {
   chunk: string;
@@ -52,6 +52,7 @@ type RagDependencies = {
 };
 
 type HydratedSource = {
+  contentText: string | null;
   id: string;
   path: string | null;
   title: string;
@@ -61,7 +62,40 @@ type HydratedSource = {
 
 const DEFAULT_SEARCH_LIMIT = 6;
 const MAX_SEARCH_LIMIT = 12;
+const MAX_CANDIDATE_LIMIT = 48;
 const MAX_CONTEXT_CHARS = 12_000;
+const KOREAN_PARTICLE_SUFFIX_PATTERN =
+  /(으로서|으로써|에게서|한테서|에서|에게|한테|부터|까지|보다|처럼|만큼|으로|은|는|이|가|을|를|와|과|의|도|만|로)$/;
+const QUERY_TERM_EXPANSIONS: Record<string, string[]> = {
+  부트캠프: ["캠프", "집중캠프", "코딩캠프"],
+  캠프: ["부트캠프", "집중캠프", "코딩캠프"],
+};
+const QUERY_STOP_WORDS = new Set([
+  "관련",
+  "나는",
+  "내가",
+  "대해",
+  "무엇",
+  "뭘",
+  "뭐",
+  "어떤",
+  "올해",
+  "작년",
+  "지난",
+  "좀",
+  "했나",
+  "했나요",
+  "했어",
+  "했을까",
+]);
+
+type LexicalSignal = {
+  contentPhraseMatches: number;
+  contentTermMatches: number;
+  matchedTermCount: number;
+  metadataPhraseMatches: number;
+  metadataTermMatches: number;
+};
 
 function clampLimit(value: number | undefined) {
   if (!value || !Number.isFinite(value)) {
@@ -79,6 +113,227 @@ function createScore(distance: number | null) {
   return Number((1 / (1 + Math.max(0, distance))).toFixed(4));
 }
 
+function normalizeLexicalText(value: string | null | undefined) {
+  return normalizeKnowledgeText(value ?? "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeQueryTerm(value: string) {
+  const withoutSuffix = value.replace(KOREAN_PARTICLE_SUFFIX_PATTERN, "");
+
+  return withoutSuffix.length >= 2 ? withoutSuffix : value;
+}
+
+function expandQueryTerms(terms: string[]) {
+  const expanded: string[] = [];
+
+  for (const term of terms) {
+    expanded.push(term, ...(QUERY_TERM_EXPANSIONS[term] ?? []));
+  }
+
+  return [...new Set(expanded)];
+}
+
+function extractQueryTerms(query: string) {
+  const terms = normalizeLexicalText(query)
+    .split(" ")
+    .map(normalizeQueryTerm)
+    .filter((term) => term.length >= 2 && !QUERY_STOP_WORDS.has(term));
+
+  return expandQueryTerms([...new Set(terms)]);
+}
+
+function createQueryPhrases(terms: string[]) {
+  const phrases: string[] = [];
+
+  for (let size = Math.min(4, terms.length); size >= 2; size -= 1) {
+    for (let index = 0; index <= terms.length - size; index += 1) {
+      phrases.push(terms.slice(index, index + size).join(" "));
+    }
+  }
+
+  return phrases;
+}
+
+function getChunkContentText(chunk: string) {
+  const bodyMarker = "본문:";
+  const bodyIndex = chunk.indexOf(bodyMarker);
+
+  return bodyIndex >= 0 ? chunk.slice(bodyIndex + bodyMarker.length) : chunk;
+}
+
+function splitContentSegments(value: string) {
+  return normalizeKnowledgeText(value)
+    .split(/\n{2,}|(?<=[.!?。！？])\s+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function createLexicalSignal(result: KnowledgeSearchResult, queryTerms: string[]): LexicalSignal {
+  const metadataText = normalizeLexicalText(
+    [result.source.title, result.source.path].filter(Boolean).join(" "),
+  );
+  const contentText = normalizeLexicalText(getChunkContentText(result.chunk));
+  const matchedTerms = new Set<string>();
+  let metadataTermMatches = 0;
+  let contentTermMatches = 0;
+  let metadataPhraseMatches = 0;
+  let contentPhraseMatches = 0;
+
+  for (const term of queryTerms) {
+    if (metadataText.includes(term)) {
+      metadataTermMatches += 1;
+      matchedTerms.add(term);
+    }
+
+    if (contentText.includes(term)) {
+      contentTermMatches += 1;
+      matchedTerms.add(term);
+    }
+  }
+
+  for (const phrase of createQueryPhrases(queryTerms)) {
+    if (metadataText.includes(phrase)) {
+      metadataPhraseMatches += phrase.split(" ").length - 1;
+    }
+
+    if (contentText.includes(phrase)) {
+      contentPhraseMatches += phrase.split(" ").length - 1;
+    }
+  }
+
+  return {
+    contentPhraseMatches,
+    contentTermMatches,
+    matchedTermCount: matchedTerms.size,
+    metadataPhraseMatches,
+    metadataTermMatches,
+  };
+}
+
+function createHybridScore(result: KnowledgeSearchResult, queryTerms: string[]) {
+  const vectorScore = createScore(result.distance) ?? 0;
+  const signal = createLexicalSignal(result, queryTerms);
+  let lexicalBoost = 0;
+
+  lexicalBoost += signal.metadataTermMatches * 0.07;
+  lexicalBoost += signal.contentTermMatches * 0.035;
+  lexicalBoost += signal.metadataPhraseMatches * 0.1;
+  lexicalBoost += signal.contentPhraseMatches * 0.05;
+
+  return Number(Math.min(0.9999, vectorScore + lexicalBoost).toFixed(4));
+}
+
+function hasEnoughSearchSignal(result: KnowledgeSearchResult, queryTerms: string[]) {
+  if (queryTerms.length <= 2) {
+    return true;
+  }
+
+  const vectorScore = createScore(result.distance) ?? 0;
+  const signal = createLexicalSignal(result, queryTerms);
+
+  if (signal.metadataPhraseMatches + signal.contentPhraseMatches > 0) {
+    return true;
+  }
+
+  if (signal.matchedTermCount >= 2) {
+    return true;
+  }
+
+  if (signal.contentTermMatches >= 1 && vectorScore >= 0.45) {
+    return true;
+  }
+
+  return vectorScore >= 0.55;
+}
+
+function dedupeResultsBySource(results: KnowledgeSearchResult[]) {
+  const seen = new Set<string>();
+
+  return results.filter((result) => {
+    const key = `${result.source.type}:${result.source.id}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function createPublicSource(source: HydratedSource): KnowledgeSearchResult["source"] {
+  return {
+    id: source.id,
+    path: source.path,
+    title: source.title,
+    type: source.type,
+    url: source.url,
+  };
+}
+
+function scoreContentSegment(segment: string, queryTerms: string[]) {
+  const text = normalizeLexicalText(segment);
+  let score = 0;
+
+  for (const term of queryTerms) {
+    if (text.includes(term)) {
+      score += 1;
+    }
+  }
+
+  for (const phrase of createQueryPhrases(queryTerms)) {
+    if (text.includes(phrase)) {
+      score += phrase.split(" ").length;
+    }
+  }
+
+  return score;
+}
+
+function createEvidenceChunk({
+  fallbackChunk,
+  queryTerms,
+  source,
+}: {
+  fallbackChunk: string;
+  queryTerms: string[];
+  source: HydratedSource;
+}) {
+  const content = source.contentText?.trim();
+
+  if (!content) {
+    return fallbackChunk;
+  }
+
+  const segments = splitContentSegments(content);
+
+  if (!segments.length) {
+    return fallbackChunk;
+  }
+
+  const ranked = segments
+    .map((segment, index) => ({
+      index,
+      score: scoreContentSegment(segment, queryTerms),
+      segment,
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  const best = ranked[0];
+
+  if (!best || best.score <= 0) {
+    return segments.slice(0, 2).join("\n\n").slice(0, 1200);
+  }
+
+  const start = Math.max(0, best.index - 1);
+  const end = Math.min(segments.length, best.index + 2);
+
+  return segments.slice(start, end).join("\n\n").slice(0, 1200);
+}
+
 function readString(value: unknown) {
   return typeof value === "string" ? value : null;
 }
@@ -88,6 +343,10 @@ function readSourceType(match: VectorQueryMatch): KnowledgeSourceType | null {
 
   if (sourceType === "DROPBOX_MD" || match.id.startsWith("dropbox-md:")) {
     return "DROPBOX_MD";
+  }
+
+  if (sourceType === "NOTION_PAGE" || match.id.startsWith("notion-page:")) {
+    return "NOTION_PAGE";
   }
 
   if (sourceType === "POST" || match.id.startsWith("post:")) {
@@ -136,6 +395,7 @@ async function hydrateSources({
 }) {
   const postIds = new Set<string>();
   const dropboxIds = new Set<string>();
+  const notionPageIds = new Set<string>();
 
   for (const match of matches) {
     const sourceType = readSourceType(match);
@@ -152,12 +412,14 @@ async function hydrateSources({
 
     if (sourceType === "POST") {
       postIds.add(sourceId);
-    } else {
+    } else if (sourceType === "DROPBOX_MD") {
       dropboxIds.add(sourceId);
+    } else {
+      notionPageIds.add(sourceId);
     }
   }
 
-  const [posts, dropboxDocuments] = await Promise.all([
+  const [posts, dropboxDocuments, notionPages] = await Promise.all([
     postIds.size
       ? prisma.post.findMany({
           where: {
@@ -167,6 +429,8 @@ async function hydrateSources({
             },
           },
           select: {
+            content: true,
+            excerpt: true,
             id: true,
             title: true,
           },
@@ -184,6 +448,23 @@ async function hydrateSources({
             id: true,
             name: true,
             pathDisplay: true,
+            plainText: true,
+          },
+        })
+      : Promise.resolve([]),
+    notionPageIds.size
+      ? prisma.notionPageDocument.findMany({
+          where: {
+            id: {
+              in: [...notionPageIds],
+            },
+            ownerId,
+          },
+          select: {
+            id: true,
+            plainText: true,
+            title: true,
+            url: true,
           },
         })
       : Promise.resolve([]),
@@ -192,6 +473,11 @@ async function hydrateSources({
 
   for (const post of posts) {
     hydrated.set(`POST:${post.id}`, {
+      contentText: buildPostIndexText({
+        content: post.content,
+        excerpt: post.excerpt,
+        title: post.title,
+      }),
       id: post.id,
       path: null,
       title: post.title,
@@ -202,6 +488,7 @@ async function hydrateSources({
 
   for (const document of dropboxDocuments) {
     hydrated.set(`DROPBOX_MD:${document.id}`, {
+      contentText: document.plainText,
       id: document.id,
       path: document.pathDisplay,
       title: document.name,
@@ -210,16 +497,40 @@ async function hydrateSources({
     });
   }
 
+  for (const page of notionPages) {
+    hydrated.set(`NOTION_PAGE:${page.id}`, {
+      contentText: page.plainText,
+      id: page.id,
+      path: null,
+      title: page.title,
+      type: "NOTION_PAGE",
+      url: page.url,
+    });
+  }
+
   return hydrated;
 }
 
-function toSearchResult(match: VectorQueryMatch, source: HydratedSource): KnowledgeSearchResult {
-  return {
-    chunk: match.document,
+function toSearchResult(
+  match: VectorQueryMatch,
+  source: HydratedSource,
+  queryTerms: string[] = [],
+): KnowledgeSearchResult {
+  const result = {
+    chunk: createEvidenceChunk({
+      fallbackChunk: getChunkContentText(match.document),
+      queryTerms,
+      source,
+    }),
     chunkId: match.id,
     distance: match.distance,
     score: createScore(match.distance),
-    source,
+    source: createPublicSource(source),
+  };
+
+  return {
+    ...result,
+    score: queryTerms.length ? createHybridScore(result, queryTerms) : result.score,
   };
 }
 
@@ -230,7 +541,9 @@ function createContext(results: KnowledgeSearchResult[]) {
     const label =
       result.source.type === "POST"
         ? `게시글: ${result.source.title} (${result.source.url})`
-        : `Dropbox: ${result.source.title} (${result.source.path})`;
+        : result.source.type === "DROPBOX_MD"
+          ? `Dropbox: ${result.source.title} (${result.source.path})`
+          : `Notion: ${result.source.title} (${result.source.url ?? "url 없음"})`;
     const next = `[${index + 1}] ${label}\n${result.chunk}\n\n`;
 
     if (context.length + next.length > MAX_CONTEXT_CHARS) {
@@ -355,24 +668,26 @@ export async function searchKnowledgeSources({
   }
 
   const safeLimit = clampLimit(limit);
+  const candidateLimit = Math.min(MAX_CANDIDATE_LIMIT, Math.max(safeLimit, safeLimit * 8));
+  const queryTerms = extractQueryTerms(normalizedQuery);
   const embedding = await embeddingClient.embedDocuments([normalizedQuery]);
   const [postMatches, dropboxMatches] = await Promise.all([
     vectorStore.query({
       embedding: embedding.embeddings[0],
-      limit: safeLimit,
+      limit: candidateLimit,
       where: {
         authorId: ownerId,
       },
     }),
     vectorStore.query({
       embedding: embedding.embeddings[0],
-      limit: safeLimit,
+      limit: candidateLimit,
       where: {
         ownerId,
       },
     }),
   ]);
-  const matches = sortMatches([...postMatches, ...dropboxMatches]).slice(0, safeLimit);
+  const matches = sortMatches([...postMatches, ...dropboxMatches]);
   const hydrated = await hydrateSources({
     matches,
     ownerId,
@@ -380,15 +695,19 @@ export async function searchKnowledgeSources({
     username,
   });
 
-  return matches
+  const results = matches
     .map((match) => {
       const sourceType = readSourceType(match);
       const sourceId = sourceType ? readSourceId(match, sourceType) : null;
       const source = sourceType && sourceId ? hydrated.get(`${sourceType}:${sourceId}`) : null;
 
-      return source ? toSearchResult(match, source) : null;
+      return source ? toSearchResult(match, source, queryTerms) : null;
     })
-    .filter((result): result is KnowledgeSearchResult => Boolean(result));
+    .filter((result): result is KnowledgeSearchResult => Boolean(result))
+    .filter((result) => hasEnoughSearchSignal(result, queryTerms))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+  return dedupeResultsBySource(results).slice(0, safeLimit);
 }
 
 export async function answerMemoryQuestion({

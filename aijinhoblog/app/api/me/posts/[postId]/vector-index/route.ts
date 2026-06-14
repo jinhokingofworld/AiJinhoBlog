@@ -6,6 +6,7 @@ import {
 import { syncPostVectorIndex } from "@/backend/ai-indexing";
 import { fail, json } from "@/backend/http";
 import { prisma } from "@/backend/prisma";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -84,10 +85,24 @@ export async function POST(_request: Request, { params }: Params) {
     return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
 
-  const aiPipeline = await syncPostVectorIndex(post);
-  const response = json({
-    aiPipeline,
-  });
+  try {
+    await enforceAiRateLimit({
+      endpoint: "post.vector-index",
+      userId: user.id,
+    });
+    const aiPipeline = await syncPostVectorIndex(post);
+    const response = json({
+      aiPipeline,
+    });
 
-  return attachRefreshedSessionCookie(response, auth);
+    return attachRefreshedSessionCookie(response, auth);
+  } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
+    return failWithRefreshedSession("게시글 벡터 인덱싱에 실패했습니다.", auth, 502);
+  }
 }

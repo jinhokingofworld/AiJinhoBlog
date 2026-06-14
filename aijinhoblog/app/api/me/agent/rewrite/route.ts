@@ -4,6 +4,7 @@ import {
   jsonWithRefreshedSession,
 } from "@/backend/auth";
 import { readJson } from "@/backend/http";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
 import { rewriteInUserStyle, toWritingAgentErrorResponse } from "@/backend/writing-agent";
 
 export const runtime = "nodejs";
@@ -35,6 +36,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    await enforceAiRateLimit({
+      endpoint: "agent.rewrite",
+      userId: user.id,
+    });
     const result = await rewriteInUserStyle({
       ownerId: user.id,
       text: payload.text,
@@ -42,6 +47,12 @@ export async function POST(request: Request) {
 
     return jsonWithRefreshedSession({ result }, auth);
   } catch (error) {
+    const rateLimit = toRateLimitResponse(error);
+
+    if (rateLimit) {
+      return failWithRefreshedSession(rateLimit.message, auth, rateLimit.status);
+    }
+
     const response = toWritingAgentErrorResponse(error);
 
     return failWithRefreshedSession(response.message, auth, response.status);

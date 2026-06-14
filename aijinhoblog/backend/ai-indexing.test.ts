@@ -155,6 +155,14 @@ describe("ai text preprocessing", () => {
     ).toBe("제목\n본문 링크\n항목\nconst value = 1;");
   });
 
+  it("normalizes markdown tables without iterating boolean table cell headers", () => {
+    expect(
+      normalizeKnowledgeText(
+        "| 이름 | 값 |\n| --- | --- |\n| Dropbox | 연결 |\n| 경로 | 삼성 노트 |",
+      ),
+    ).toBe("이름\n값\nDropbox\n연결\n경로\n삼성 노트");
+  });
+
   it("builds post index text from title, excerpt, and content", () => {
     expect(buildPostIndexText(createPost())).toContain("제목: AI 블로그 글");
     expect(buildPostIndexText(createPost())).toContain("요약: 요약 텍스트");

@@ -12,6 +12,9 @@ Implemented scope:
 - Dropbox connection list and disconnect APIs.
 - Dropbox Markdown list, content, and sync APIs now use the logged-in user's Dropbox connection token.
 - Dropbox access tokens refresh automatically when an expiry timestamp is near.
+- Dropbox disconnect deletes the user's synced Dropbox Markdown cache and ChromaDB vector IDs before removing the connection.
+- Notion-ready cache and vector models are present through `NotionPageDocument` and `NotionPageVectorIndex`.
+- RAG source hydration now recognizes `POST`, `DROPBOX_MD`, and `NOTION_PAGE`.
 - `/{username}/settings/connections` UI for Dropbox connect/disconnect and Notion-ready provider surface.
 
 ## API Surface
@@ -31,6 +34,8 @@ Dropbox OAuth tokens are stored per `ownerId`.
 Dropbox Markdown documents remain unique by `(ownerId, pathLower)`.
 
 Dropbox Markdown vector metadata keeps `ownerId`, `sourceType`, `sourceId`, `sourcePath`, and `sourceTitle`, so RAG search can continue filtering per user.
+
+Notion page vector metadata should use the same `ownerId`, `sourceType=NOTION_PAGE`, `sourceId`, `sourceTitle`, and optional source URL convention when the sync adapter is added.
 
 ## Environment
 

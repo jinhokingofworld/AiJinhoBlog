@@ -167,6 +167,32 @@ describe("createDropboxMarkdownClient", () => {
     );
   });
 
+  it("escapes non-ASCII characters in Dropbox download headers", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("# Korean Dropbox Note", {
+        status: 200,
+        headers: {
+          "dropbox-api-result":
+            '{".tag":"file","id":"id:korean","name":"\\uc120\\ud0dd.md","path_display":"/\\uc0bc\\uc131 \\ub178\\ud2b8/\\uc120\\ud0dd.md","path_lower":"/\\uc0bc\\uc131 \\ub178\\ud2b8/\\uc120\\ud0dd.md"}',
+        },
+      }),
+    );
+    globalThis.fetch = fetchMock;
+
+    await createDropboxMarkdownClient({
+      accessToken: "token",
+      contentUrl: "https://content.dropbox.test",
+    }).readMarkdownFile("/삼성 노트/선택.md");
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+
+    expect(headers["Dropbox-API-Arg"]).toBe(
+      '{"path":"/\\uc0bc\\uc131 \\ub178\\ud2b8/\\uc120\\ud0dd.md"}',
+    );
+    expect(headers["Dropbox-API-Arg"]).not.toContain("선택");
+  });
+
   it("requires an access token", async () => {
     process.env.DROPBOX_ACCESS_TOKEN = "";
 

@@ -3,6 +3,7 @@ import {
   type RetryFetchResult,
   fetchJsonWithRetry,
 } from "@/backend/ai-http";
+import "@/backend/env";
 
 export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 
