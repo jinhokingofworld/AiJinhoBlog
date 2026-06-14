@@ -83,10 +83,6 @@ export default async function DesktopAccountBar() {
               </Link>
             </>
           )}
-          <span className="text-zinc-300">|</span>
-          <Link className={linkClass} href="/">
-            블로그 홈
-          </Link>
         </div>
       </div>
     </nav>

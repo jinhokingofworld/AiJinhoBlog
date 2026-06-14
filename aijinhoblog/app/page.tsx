@@ -6,11 +6,10 @@ export default function Home() {
       <section className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center px-5 py-16">
         <p className="text-sm font-semibold text-teal-700">AiJinhoBlog</p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-normal text-zinc-950 sm:text-5xl">
-          기록을 쌓고 다시 꺼내 읽는 개인 블로그
+          기록을 쌓고 다시 꺼내 읽는 AI 블로그 <br></br>AiJinhoBlog입니다
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-650">
-          Phase 1에서는 사용자별 블로그 홈, 글 작성, 댓글, 태그, 폴더 기반 정리를 안정적으로 만드는
-          데 집중합니다. AI 기능은 이후 확장을 위해 구조만 준비합니다.
+          AiJinhoBlog에서 AI를 활용해서 자신의 기억을 찾고, 글을 작성해보세요!
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
