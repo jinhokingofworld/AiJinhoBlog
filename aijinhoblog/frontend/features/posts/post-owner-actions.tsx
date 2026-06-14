@@ -97,21 +97,23 @@ export function PostOwnerActions({ post, username }: Props) {
         >
           수정
         </Link>
-        <button
-          className="border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:text-zinc-300"
-          disabled={isBusy}
-          onClick={() =>
-            void updatePost(
-              {
-                status: post.status === "DRAFT" ? "PUBLISHED" : "DRAFT",
-              },
-              "status",
-            )
-          }
-          type="button"
-        >
-          {busyAction === "status" ? "변경 중" : post.status === "DRAFT" ? "게시하기" : "임시저장"}
-        </button>
+        {post.status === "DRAFT" ? (
+          <button
+            className="border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:text-zinc-300"
+            disabled={isBusy}
+            onClick={() =>
+              void updatePost(
+                {
+                  status: "PUBLISHED",
+                },
+                "status",
+              )
+            }
+            type="button"
+          >
+            {busyAction === "status" ? "변경 중" : "게시하기"}
+          </button>
+        ) : null}
         <button
           className="border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:text-zinc-300"
           disabled={isBusy}
