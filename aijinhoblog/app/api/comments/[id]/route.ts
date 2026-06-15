@@ -2,9 +2,9 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { fail, json } from "@/backend/http";
-import { prisma } from "@/backend/prisma";
+} from "@/backend/auth/session";
+import { fail, json } from "@/backend/core/http";
+import { prisma } from "@/backend/core/prisma";
 
 export const runtime = "nodejs";
 

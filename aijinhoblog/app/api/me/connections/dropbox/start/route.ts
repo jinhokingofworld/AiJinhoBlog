@@ -4,13 +4,13 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
+} from "@/backend/auth/session";
 import {
   DropboxOAuthConfigError,
   createDropboxOAuthAuthorizeUrl,
   createDropboxOAuthState,
-} from "@/backend/dropbox-oauth";
-import { fail } from "@/backend/http";
+} from "@/backend/integrations/dropbox/oauth";
+import { fail } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 

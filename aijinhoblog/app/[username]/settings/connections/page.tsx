@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/backend/auth";
-import { listExternalConnections } from "@/backend/external-connections";
+import { getCurrentUser } from "@/backend/auth/session";
+import { listExternalConnections } from "@/backend/integrations/external-connections";
 import { PageFrame } from "@/frontend/components/page-frame";
 import { ExternalConnectionsClient } from "@/frontend/features/settings/external-connections-client";
 

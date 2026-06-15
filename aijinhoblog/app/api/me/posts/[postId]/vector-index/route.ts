@@ -2,11 +2,11 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { syncPostVectorIndex } from "@/backend/ai-indexing";
-import { fail, json } from "@/backend/http";
-import { prisma } from "@/backend/prisma";
-import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
+} from "@/backend/auth/session";
+import { syncPostVectorIndex } from "@/backend/ai/indexing";
+import { fail, json } from "@/backend/core/http";
+import { prisma } from "@/backend/core/prisma";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/ai/rate-limit";
 
 export const runtime = "nodejs";
 

@@ -2,9 +2,9 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
   jsonWithRefreshedSession,
-} from "@/backend/auth";
-import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
-import { getWritingInsights, toWritingAgentErrorResponse } from "@/backend/writing-agent";
+} from "@/backend/auth/session";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/ai/rate-limit";
+import { getWritingInsights, toWritingAgentErrorResponse } from "@/backend/ai/writing-agent";
 
 export const runtime = "nodejs";
 

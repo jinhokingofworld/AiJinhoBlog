@@ -37,7 +37,7 @@ function readCliOptions(): CliOptions {
 }
 
 async function readOwnerId(options: CliOptions) {
-  const { prisma } = await import("@/backend/prisma");
+  const { prisma } = await import("@/backend/core/prisma");
 
   if (options.userId) {
     return options.userId;
@@ -68,7 +68,7 @@ async function main() {
   const options = readCliOptions();
 
   if (options.dryRun) {
-    const { createDropboxMarkdownClient } = await import("@/backend/dropbox");
+    const { createDropboxMarkdownClient } = await import("@/backend/integrations/dropbox/client");
     const files = await createDropboxMarkdownClient().listMarkdownFiles({
       path: options.path,
       recursive: options.recursive,
@@ -83,8 +83,8 @@ async function main() {
   }
 
   const ownerId = await readOwnerId(options);
-  const { syncDropboxMarkdownDocuments } = await import("@/backend/dropbox-indexing");
-  const { prisma } = await import("@/backend/prisma");
+  const { syncDropboxMarkdownDocuments } = await import("@/backend/integrations/dropbox/indexing");
+  const { prisma } = await import("@/backend/core/prisma");
   const result = await syncDropboxMarkdownDocuments(
     ownerId,
     {
@@ -119,7 +119,7 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    const { prisma } = await import("@/backend/prisma");
+    const { prisma } = await import("@/backend/core/prisma");
 
     await prisma.$disconnect();
   });

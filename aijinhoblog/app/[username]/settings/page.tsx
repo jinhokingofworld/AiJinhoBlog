@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PageFrame } from "@/frontend/components/page-frame";
-import { getCurrentUser } from "@/backend/auth";
+import { getCurrentUser } from "@/backend/auth/session";
 
 export const dynamic = "force-dynamic";
 

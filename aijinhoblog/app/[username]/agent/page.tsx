@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/backend/auth";
-import { prisma } from "@/backend/prisma";
+import { getCurrentUser } from "@/backend/auth/session";
+import { prisma } from "@/backend/core/prisma";
 import { PageFrame } from "@/frontend/components/page-frame";
 import { WritingAgentClient } from "@/frontend/features/agent/writing-agent-client";
 

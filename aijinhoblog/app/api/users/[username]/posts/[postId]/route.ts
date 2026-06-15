@@ -2,10 +2,10 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { json } from "@/backend/http";
-import { canReadPost, postDetailInclude, serializePost } from "@/backend/posts";
-import { prisma } from "@/backend/prisma";
+} from "@/backend/auth/session";
+import { json } from "@/backend/core/http";
+import { canReadPost, postDetailInclude, serializePost } from "@/backend/posts/service";
+import { prisma } from "@/backend/core/prisma";
 
 export const runtime = "nodejs";
 

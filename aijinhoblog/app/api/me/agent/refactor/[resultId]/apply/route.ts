@@ -2,8 +2,8 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
   jsonWithRefreshedSession,
-} from "@/backend/auth";
-import { applyRefactorResult, toWritingAgentErrorResponse } from "@/backend/writing-agent";
+} from "@/backend/auth/session";
+import { applyRefactorResult, toWritingAgentErrorResponse } from "@/backend/ai/writing-agent";
 
 export const runtime = "nodejs";
 

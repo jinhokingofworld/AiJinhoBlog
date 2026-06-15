@@ -1,6 +1,6 @@
-import { fail, json } from "@/backend/http";
-import { profileSelect, serializeProfile } from "@/backend/profile";
-import { prisma } from "@/backend/prisma";
+import { fail, json } from "@/backend/core/http";
+import { profileSelect, serializeProfile } from "@/backend/users/profile";
+import { prisma } from "@/backend/core/prisma";
 
 export const runtime = "nodejs";
 

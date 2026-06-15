@@ -1,9 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 
 import { PageFrame } from "@/frontend/components/page-frame";
-import { getCurrentUser } from "@/backend/auth";
-import { profileSelect, serializeProfile } from "@/backend/profile";
-import { prisma } from "@/backend/prisma";
+import { getCurrentUser } from "@/backend/auth/session";
+import { profileSelect, serializeProfile } from "@/backend/users/profile";
+import { prisma } from "@/backend/core/prisma";
 import { ProfileSettingsForm } from "@/frontend/features/settings/profile-settings-form";
 
 type Props = {

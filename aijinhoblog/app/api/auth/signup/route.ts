@@ -1,7 +1,7 @@
-import { hashPassword } from "@/backend/auth-crypto";
-import { fail, json, readJson } from "@/backend/http";
-import { prisma } from "@/backend/prisma";
-import { parseCredentials } from "@/backend/validation";
+import { hashPassword } from "@/backend/auth/crypto";
+import { fail, json, readJson } from "@/backend/core/http";
+import { prisma } from "@/backend/core/prisma";
+import { parseCredentials } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 

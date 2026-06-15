@@ -2,13 +2,13 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
   jsonWithRefreshedSession,
-} from "@/backend/auth";
-import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
+} from "@/backend/auth/session";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/ai/rate-limit";
 import {
   getWritingStyleProfile,
   refreshWritingStyleProfile,
   toWritingAgentErrorResponse,
-} from "@/backend/writing-agent";
+} from "@/backend/ai/writing-agent";
 
 export const runtime = "nodejs";
 

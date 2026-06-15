@@ -2,17 +2,17 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
+} from "@/backend/auth/session";
 import {
   DropboxAccessTokenMissingError,
   DropboxConnectorError,
   createDropboxMarkdownClient,
-} from "@/backend/dropbox";
+} from "@/backend/integrations/dropbox/client";
 import {
   ExternalConnectionRequiredError,
   getDropboxConnectionAccessToken,
-} from "@/backend/external-connections";
-import { fail, json } from "@/backend/http";
+} from "@/backend/integrations/external-connections";
+import { fail, json } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 

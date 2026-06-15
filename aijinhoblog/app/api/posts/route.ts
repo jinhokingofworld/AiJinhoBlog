@@ -1,15 +1,15 @@
 import type { Prisma } from "@/backend/generated/prisma";
 
-import { json } from "@/backend/http";
+import { json } from "@/backend/core/http";
 import {
   createPostListFilterWhere,
   normalizePostSort,
   POST_PAGE_SIZE,
   postSummaryInclude,
   serializePost,
-} from "@/backend/posts";
-import { prisma } from "@/backend/prisma";
-import { parsePositiveInt } from "@/backend/validation";
+} from "@/backend/posts/service";
+import { prisma } from "@/backend/core/prisma";
+import { parsePositiveInt } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 

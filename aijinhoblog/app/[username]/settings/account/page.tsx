@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { PageFrame } from "@/frontend/components/page-frame";
-import { getCurrentUser } from "@/backend/auth";
+import { getCurrentUser } from "@/backend/auth/session";
 import { AccountSettingsClient } from "@/frontend/features/settings/account-settings-client";
 
 export const dynamic = "force-dynamic";

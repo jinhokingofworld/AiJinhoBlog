@@ -3,8 +3,8 @@ import Link from "next/link";
 
 import { PageFrame } from "@/frontend/components/page-frame";
 import { FolderSettingsClient } from "@/frontend/features/settings/folder-settings-client";
-import { getCurrentUser } from "@/backend/auth";
-import { ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/folders";
+import { getCurrentUser } from "@/backend/auth/session";
+import { ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/posts/folders";
 
 type Props = {
   params: Promise<{

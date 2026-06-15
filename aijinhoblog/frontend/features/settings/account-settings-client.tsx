@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
-import type { SerializedAccount } from "@/backend/account-settings";
+import type { SerializedAccount } from "@/backend/users/account-settings";
 
 type Props = {
   initialAccount: SerializedAccount;

@@ -48,8 +48,8 @@ function sleep(ms: number) {
 
 async function main() {
   const [{ syncPostVectorIndex }, { prisma }] = await Promise.all([
-    import("@/backend/ai-indexing"),
-    import("@/backend/prisma"),
+    import("@/backend/ai/indexing"),
+    import("@/backend/core/prisma"),
   ]);
   const options = readCliOptions();
   const where: Prisma.PostWhereInput = options.includeIndexed
@@ -135,7 +135,7 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    const { prisma } = await import("@/backend/prisma");
+    const { prisma } = await import("@/backend/core/prisma");
 
     await prisma.$disconnect();
   });

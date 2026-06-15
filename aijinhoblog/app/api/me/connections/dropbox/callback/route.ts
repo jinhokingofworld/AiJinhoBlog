@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth";
+import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth/session";
 import {
   DropboxOAuthConfigError,
   DropboxOAuthError,
   exchangeDropboxOAuthCode,
   readDropboxOAuthState,
   verifyDropboxOAuthState,
-} from "@/backend/dropbox-oauth";
-import { upsertDropboxConnectionFromOAuth } from "@/backend/external-connections";
-import { fail } from "@/backend/http";
+} from "@/backend/integrations/dropbox/oauth";
+import { upsertDropboxConnectionFromOAuth } from "@/backend/integrations/external-connections";
+import { fail } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 

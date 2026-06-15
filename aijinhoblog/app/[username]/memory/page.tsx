@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/backend/auth";
+import { getCurrentUser } from "@/backend/auth/session";
 import { PageFrame } from "@/frontend/components/page-frame";
 import { MemoryQaClient } from "@/frontend/features/rag/memory-qa-client";
 

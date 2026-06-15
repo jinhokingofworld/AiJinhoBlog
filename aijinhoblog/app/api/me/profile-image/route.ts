@@ -2,11 +2,11 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { fail, json } from "@/backend/http";
-import { profileSelect, serializeProfile } from "@/backend/profile";
-import { prisma } from "@/backend/prisma";
-import { deleteLocalUpload, saveImageUpload } from "@/backend/uploads";
+} from "@/backend/auth/session";
+import { fail, json } from "@/backend/core/http";
+import { profileSelect, serializeProfile } from "@/backend/users/profile";
+import { prisma } from "@/backend/core/prisma";
+import { deleteLocalUpload, saveImageUpload } from "@/backend/users/uploads";
 
 export const runtime = "nodejs";
 

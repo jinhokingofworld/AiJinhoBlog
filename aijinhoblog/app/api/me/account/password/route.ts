@@ -2,10 +2,10 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { AccountSettingsError, changeAccountPassword } from "@/backend/account-settings";
-import { fail, json, readJson } from "@/backend/http";
-import { parsePasswordChangePayload } from "@/backend/validation";
+} from "@/backend/auth/session";
+import { AccountSettingsError, changeAccountPassword } from "@/backend/users/account-settings";
+import { fail, json, readJson } from "@/backend/core/http";
+import { parsePasswordChangePayload } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 

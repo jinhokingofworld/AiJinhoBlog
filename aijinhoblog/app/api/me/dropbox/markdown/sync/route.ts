@@ -2,22 +2,22 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
+} from "@/backend/auth/session";
 import {
   DropboxAccessTokenMissingError,
   DropboxConnectorError,
   createDropboxMarkdownClient,
-} from "@/backend/dropbox";
-import { syncDropboxMarkdownDocuments } from "@/backend/dropbox-indexing";
+} from "@/backend/integrations/dropbox/client";
+import { syncDropboxMarkdownDocuments } from "@/backend/integrations/dropbox/indexing";
 import {
   ExternalConnectionRequiredError,
   getDropboxConnectionAccessToken,
   markExternalConnectionError,
   markExternalConnectionOperationError,
   markExternalConnectionSynced,
-} from "@/backend/external-connections";
-import { fail, json, readJson } from "@/backend/http";
-import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
+} from "@/backend/integrations/external-connections";
+import { fail, json, readJson } from "@/backend/core/http";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/ai/rate-limit";
 
 export const runtime = "nodejs";
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { PostStatusInput, PostVisibilityInput } from "@/backend/validation";
+import type { PostStatusInput, PostVisibilityInput } from "@/backend/core/validation";
 
 type InitialPost = {
   id: string;

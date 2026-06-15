@@ -6,7 +6,7 @@ import {
   pageFramePaddingClass,
 } from "@/frontend/components/page-frame";
 import { logoutAction } from "@/backend/actions/auth-actions";
-import { getCurrentUser } from "@/backend/auth";
+import { getCurrentUser } from "@/backend/auth/session";
 
 export default async function DesktopAccountBar() {
   const currentUser = await getCurrentUser();

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import type { SerializedExternalConnection } from "@/backend/external-connections";
+import type { SerializedExternalConnection } from "@/backend/integrations/external-connections";
 
 type DropboxMarkdownFile = {
   id: string;

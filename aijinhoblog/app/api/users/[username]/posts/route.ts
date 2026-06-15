@@ -2,8 +2,8 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { json } from "@/backend/http";
+} from "@/backend/auth/session";
+import { json } from "@/backend/core/http";
 import {
   createPostListFilterWhere,
   createPostAccessWhere,
@@ -11,9 +11,9 @@ import {
   POST_PAGE_SIZE,
   postSummaryInclude,
   serializePost,
-} from "@/backend/posts";
-import { prisma } from "@/backend/prisma";
-import { parsePositiveInt } from "@/backend/validation";
+} from "@/backend/posts/service";
+import { prisma } from "@/backend/core/prisma";
+import { parsePositiveInt } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 

@@ -1,6 +1,6 @@
-import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth";
-import { getDropboxOAuthRedirectUri } from "@/backend/dropbox-oauth";
-import { fail, json } from "@/backend/http";
+import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth/session";
+import { getDropboxOAuthRedirectUri } from "@/backend/integrations/dropbox/oauth";
+import { fail, json } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 

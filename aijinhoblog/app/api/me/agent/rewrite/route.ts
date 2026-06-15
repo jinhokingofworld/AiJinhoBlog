@@ -2,10 +2,10 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
   jsonWithRefreshedSession,
-} from "@/backend/auth";
-import { readJson } from "@/backend/http";
-import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
-import { rewriteInUserStyle, toWritingAgentErrorResponse } from "@/backend/writing-agent";
+} from "@/backend/auth/session";
+import { readJson } from "@/backend/core/http";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/ai/rate-limit";
+import { rewriteInUserStyle, toWritingAgentErrorResponse } from "@/backend/ai/writing-agent";
 
 export const runtime = "nodejs";
 

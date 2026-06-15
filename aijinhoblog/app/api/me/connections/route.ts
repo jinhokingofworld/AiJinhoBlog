@@ -1,6 +1,6 @@
-import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth";
-import { listExternalConnections } from "@/backend/external-connections";
-import { fail, json } from "@/backend/http";
+import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth/session";
+import { listExternalConnections } from "@/backend/integrations/external-connections";
+import { fail, json } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 

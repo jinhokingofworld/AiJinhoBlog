@@ -2,12 +2,12 @@ import {
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
   jsonWithRefreshedSession,
-} from "@/backend/auth";
-import { EmbeddingProviderError, EmbeddingSkippedError } from "@/backend/ai-embedding";
-import { ChromaVectorStoreError } from "@/backend/ai-vector-store";
-import { readJson } from "@/backend/http";
-import { searchKnowledgeSources } from "@/backend/rag";
-import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
+} from "@/backend/auth/session";
+import { EmbeddingProviderError, EmbeddingSkippedError } from "@/backend/ai/embedding";
+import { ChromaVectorStoreError } from "@/backend/ai/vector-store";
+import { readJson } from "@/backend/core/http";
+import { searchKnowledgeSources } from "@/backend/ai/rag";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/ai/rate-limit";
 
 export const runtime = "nodejs";
 

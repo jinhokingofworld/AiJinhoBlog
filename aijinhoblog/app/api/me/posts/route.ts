@@ -2,11 +2,11 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { fail, json, readJson } from "@/backend/http";
-import { createOwnerPost, PostServiceError } from "@/backend/posts";
-import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/rate-limit";
-import { parsePostPayload } from "@/backend/validation";
+} from "@/backend/auth/session";
+import { fail, json, readJson } from "@/backend/core/http";
+import { createOwnerPost, PostServiceError } from "@/backend/posts/service";
+import { enforceAiRateLimit, toRateLimitResponse } from "@/backend/ai/rate-limit";
+import { parsePostPayload } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 

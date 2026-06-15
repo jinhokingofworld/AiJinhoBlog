@@ -2,11 +2,16 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { ensureDefaultFolder, listFolders, moveFolder, serializeFolder } from "@/backend/folders";
-import { fail, json, readJson } from "@/backend/http";
-import { prisma } from "@/backend/prisma";
-import { parseFolderMovePayload, parseFolderPayload } from "@/backend/validation";
+} from "@/backend/auth/session";
+import {
+  ensureDefaultFolder,
+  listFolders,
+  moveFolder,
+  serializeFolder,
+} from "@/backend/posts/folders";
+import { fail, json, readJson } from "@/backend/core/http";
+import { prisma } from "@/backend/core/prisma";
+import { parseFolderMovePayload, parseFolderPayload } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 

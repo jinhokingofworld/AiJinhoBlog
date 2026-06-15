@@ -10,7 +10,7 @@ import {
 } from "@/frontend/components/blog-components";
 import { PageFrame } from "@/frontend/components/page-frame";
 import { logoutAction } from "@/backend/actions/auth-actions";
-import { getCurrentUser } from "@/backend/auth";
+import { getCurrentUser } from "@/backend/auth/session";
 import {
   createPageWindow,
   createPostAccessWhere,
@@ -20,10 +20,10 @@ import {
   normalizePostSearchQuery,
   type PostListSort,
   POST_PAGE_SIZE,
-} from "@/backend/posts";
-import { profileSelect, serializeProfile } from "@/backend/profile";
-import { prisma } from "@/backend/prisma";
-import { parsePositiveInt } from "@/backend/validation";
+} from "@/backend/posts/service";
+import { profileSelect, serializeProfile } from "@/backend/users/profile";
+import { prisma } from "@/backend/core/prisma";
+import { parsePositiveInt } from "@/backend/core/validation";
 
 export const dynamic = "force-dynamic";
 

@@ -2,10 +2,10 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { deleteOwnerDropboxMarkdownKnowledge } from "@/backend/dropbox-indexing";
-import { deleteExternalConnection } from "@/backend/external-connections";
-import { fail, json } from "@/backend/http";
+} from "@/backend/auth/session";
+import { deleteOwnerDropboxMarkdownKnowledge } from "@/backend/integrations/dropbox/indexing";
+import { deleteExternalConnection } from "@/backend/integrations/external-connections";
+import { fail, json } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 

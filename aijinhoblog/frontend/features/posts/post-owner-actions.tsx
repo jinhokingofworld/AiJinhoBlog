@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { PostStatusInput, PostVisibilityInput } from "@/backend/validation";
+import type { PostStatusInput, PostVisibilityInput } from "@/backend/core/validation";
 
 type OwnerPost = {
   id: string;

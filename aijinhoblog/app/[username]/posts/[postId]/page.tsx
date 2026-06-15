@@ -6,16 +6,16 @@ import { BlogHeroHeader, ProfileSummaryCard } from "@/frontend/components/blog-c
 import { PageFrame } from "@/frontend/components/page-frame";
 import { CommentsPanel } from "@/frontend/features/comments/comments-panel";
 import { PostOwnerActions } from "@/frontend/features/posts/post-owner-actions";
-import { getCurrentUser } from "@/backend/auth";
+import { getCurrentUser } from "@/backend/auth/session";
 import {
   canReadPost,
   createPostAccessWhere,
   createPostSummary,
   RECENT_POST_LIMIT,
   serializePost,
-} from "@/backend/posts";
-import { profileSelect, serializeProfile } from "@/backend/profile";
-import { prisma } from "@/backend/prisma";
+} from "@/backend/posts/service";
+import { profileSelect, serializeProfile } from "@/backend/users/profile";
+import { prisma } from "@/backend/core/prisma";
 
 export const dynamic = "force-dynamic";
 

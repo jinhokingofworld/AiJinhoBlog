@@ -2,10 +2,15 @@ import {
   attachRefreshedSessionCookie,
   failWithRefreshedSession,
   getCurrentUserOrRefresh,
-} from "@/backend/auth";
-import { createFolder, ensureDefaultFolder, listFolders, serializeFolder } from "@/backend/folders";
-import { fail, json, readJson } from "@/backend/http";
-import { parseFolderPayload } from "@/backend/validation";
+} from "@/backend/auth/session";
+import {
+  createFolder,
+  ensureDefaultFolder,
+  listFolders,
+  serializeFolder,
+} from "@/backend/posts/folders";
+import { fail, json, readJson } from "@/backend/core/http";
+import { parseFolderPayload } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 

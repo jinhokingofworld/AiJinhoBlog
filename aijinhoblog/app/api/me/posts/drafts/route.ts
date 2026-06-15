@@ -1,6 +1,6 @@
-import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth";
-import { fail, json } from "@/backend/http";
-import { listOwnerDraftPosts } from "@/backend/posts";
+import { attachRefreshedSessionCookie, getCurrentUserOrRefresh } from "@/backend/auth/session";
+import { fail, json } from "@/backend/core/http";
+import { listOwnerDraftPosts } from "@/backend/posts/service";
 
 export const runtime = "nodejs";
 

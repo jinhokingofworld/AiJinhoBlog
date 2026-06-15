@@ -5,8 +5,8 @@ import { loadEnvConfig } from "@next/env";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import { registerBlogMcpTools } from "@/backend/mcp-tools";
-import { prisma } from "@/backend/prisma";
+import { registerBlogMcpTools } from "@/backend/mcp/tools";
+import { prisma } from "@/backend/core/prisma";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(scriptDir, "../..");
