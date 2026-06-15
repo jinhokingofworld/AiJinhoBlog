@@ -25,6 +25,9 @@ aijinhoblog/backend/generated/prisma/
 .env
 .env.*
 !.env.example
+deploy.env
+deploy.env.*
+!deploy.env.example
 aijinhoblog/.env
 aijinhoblog/.env.*
 !aijinhoblog/.env.example

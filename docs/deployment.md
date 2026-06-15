@@ -56,6 +56,70 @@ Start the app after the migration succeeds.
 npm --prefix aijinhoblog run start
 ```
 
+## Docker Release Without Nginx
+
+The first production deployment can expose the Next.js container directly on
+port `3000`. A reverse proxy or load balancer can be added later without
+changing the application image.
+
+Prepare the server.
+
+```bash
+cp deploy.env.example deploy.env
+vi deploy.env
+```
+
+For a single-server Docker Compose deployment, use service names inside the
+container network.
+
+```bash
+DATABASE_URL=mysql://aijinho:<password>@mysql:3306/aijinhoblog
+CHROMA_URL=http://chroma:8000
+NEXT_PUBLIC_APP_URL=http://<server-ip>:3000
+DROPBOX_OAUTH_REDIRECT_URI=http://<server-ip>:3000/api/me/connections/dropbox/callback
+```
+
+Build the image and start MySQL and ChromaDB.
+
+```bash
+docker compose --env-file deploy.env -f docker-compose.prod.yml build
+docker compose --env-file deploy.env -f docker-compose.prod.yml up -d mysql chroma
+```
+
+Apply production database migrations before starting the app.
+
+```bash
+docker compose --env-file deploy.env -f docker-compose.prod.yml --profile release run --rm migrate
+```
+
+Start the app.
+
+```bash
+docker compose --env-file deploy.env -f docker-compose.prod.yml up -d app
+```
+
+Check logs.
+
+```bash
+docker compose --env-file deploy.env -f docker-compose.prod.yml logs -f app
+```
+
+At this stage the app is reachable at:
+
+```text
+http://<server-ip>:3000
+```
+
+When a load balancer or reverse proxy is added later, update:
+
+```bash
+NEXT_PUBLIC_APP_URL=https://<domain>
+DROPBOX_OAUTH_REDIRECT_URI=https://<domain>/api/me/connections/dropbox/callback
+```
+
+Then register the exact same Dropbox redirect URI in the Dropbox app console
+and redeploy the app container.
+
 ## Operational Checks
 
 - Confirm `GET /login` and `GET /signup` render.

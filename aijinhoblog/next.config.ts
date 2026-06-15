@@ -10,6 +10,7 @@ const workspaceRoot = resolve(appDir, "..");
 loadEnvConfig(workspaceRoot);
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   turbopack: {
     root: appDir,
   },

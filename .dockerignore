@@ -1,0 +1,15 @@
+node_modules
+aijinhoblog/node_modules
+.git
+.github
+.next
+aijinhoblog/.next
+coverage
+aijinhoblog/backend/generated/prisma
+.env
+.env.*
+!.env.example
+deploy.env
+deploy.env.*
+*.log
+.DS_Store
