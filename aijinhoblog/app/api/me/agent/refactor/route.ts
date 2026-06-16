@@ -33,6 +33,8 @@ function parseRefactorPayload(payload: unknown) {
   };
 }
 
+// POST /api/me/agent/refactor
+// 게시글 또는 입력 text를 출판용으로 다듬고, 결과를 WritingRefactorResult에 저장합니다.
 export async function POST(request: Request) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;

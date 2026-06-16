@@ -31,6 +31,8 @@ function signData(data: string) {
   return createHmac("sha256", getJwtSecret()).update(data).digest("base64url");
 }
 
+// 실전 구현 포인트: 비밀번호는 복호화할 수 있게 저장하지 않고 salt + PBKDF2 hash로만 저장합니다.
+// 로그인 시에도 같은 salt/iteration으로 후보 hash를 만든 뒤 timingSafeEqual로 비교합니다.
 export function hashPassword(password: string) {
   const salt = randomBytes(16).toString("base64url");
   const hash = pbkdf2Sync(
@@ -70,6 +72,8 @@ export function hashSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+// 실전 구현 포인트: 이 프로젝트의 access/refresh token은 직접 만든 HS256 JWT입니다.
+// payload에는 sub(userId), type(access/refresh), exp 만료 시간이 들어가고 쿠키에 실려 이동합니다.
 export function createJwt(payload: Record<string, unknown>, expiresAt: Date) {
   const header = encodeJson({
     alg: JWT_ALGORITHM,
@@ -85,6 +89,10 @@ export function createJwt(payload: Record<string, unknown>, expiresAt: Date) {
   return `${data}.${signData(data)}`;
 }
 
+// JWT 검증 흐름입니다.
+// 1) header.body.signature 3조각인지 확인
+// 2) 서버 secret으로 서명을 다시 계산해 비교
+// 3) alg/typ/exp를 확인한 뒤 payload를 반환합니다.
 export function verifyJwt(token: string): JwtPayload | null {
   const parts = token.split(".");
 

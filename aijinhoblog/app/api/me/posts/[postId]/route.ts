@@ -16,6 +16,8 @@ type Params = {
   }>;
 };
 
+// PATCH /api/me/posts/:postId
+// 글 수정 API입니다. 로그인 유저만 접근하고, 실제 소유자 검증은 updateOwnerPost에서 다시 수행합니다.
 export async function PATCH(request: Request, { params }: Params) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;
@@ -33,6 +35,7 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   try {
+    // 수정도 요약 재생성과 벡터 재인덱싱을 유발하므로 rate limit 대상입니다.
     await enforceAiRateLimit({
       endpoint: "post.update",
       userId: user.id,
@@ -56,6 +59,8 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 }
 
+// DELETE /api/me/posts/:postId
+// 글 삭제 API입니다. service 계층에서 ChromaDB 벡터를 먼저 삭제한 뒤 DB 게시글을 삭제합니다.
 export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;

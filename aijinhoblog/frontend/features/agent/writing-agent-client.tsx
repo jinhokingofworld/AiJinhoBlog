@@ -54,6 +54,8 @@ type Props = {
   username: string;
 };
 
+// Agent 화면의 클라이언트 컴포넌트입니다.
+// 버튼별 흐름: insights 조회, style profile 생성/갱신, 문체 rewrite, 게시글 refactor, refactor 결과 적용 API를 호출합니다.
 function splitSentences(text: string) {
   return text.match(/[^.!?\n]+[.!?]?|\n+/g) ?? [];
 }
@@ -126,6 +128,8 @@ export function WritingAgentClient({ posts, username }: Props) {
   }, []);
 
   async function requestJson<T>(path: string, init?: RequestInit) {
+    // Agent API들의 공통 fetch wrapper입니다.
+    // 각 API route는 인증, rate limit, backend/ai/writing-agent.ts 호출을 담당합니다.
     setError("");
     const response = await fetch(path, init);
     const payload = (await response.json()) as T & { error?: string };
@@ -151,6 +155,8 @@ export function WritingAgentClient({ posts, username }: Props) {
   }
 
   async function refreshProfile() {
+    // 문체 프로파일은 최근 글을 분석해 DB에 저장됩니다.
+    // rewrite/refactor에서 "내 문체"의 기준으로 사용됩니다.
     setLoading("profile");
     try {
       const payload = await requestJson<{ profile: StyleProfile }>("/api/me/agent/style-profile", {
@@ -166,6 +172,7 @@ export function WritingAgentClient({ posts, username }: Props) {
   }
 
   async function rewrite() {
+    // 입력한 짧은 텍스트를 저장된 문체 프로파일 기준으로 다시 씁니다.
     setLoading("rewrite");
     try {
       const payload = await requestJson<{ result: RewriteResult }>("/api/me/agent/rewrite", {
@@ -187,6 +194,7 @@ export function WritingAgentClient({ posts, username }: Props) {
   }
 
   async function refactor() {
+    // 선택한 게시글 본문을 출판용으로 다듬고, 결과는 바로 게시글에 덮어쓰지 않고 RefactorResult로 저장합니다.
     setLoading("refactor");
     try {
       const payload = await requestJson<{ result: RefactorResult }>("/api/me/agent/refactor", {
@@ -216,6 +224,7 @@ export function WritingAgentClient({ posts, username }: Props) {
 
     setLoading("apply");
     try {
+      // 적용 버튼을 눌러야 refactor 결과가 실제 게시글 content에 반영되고, backend에서 벡터도 재인덱싱됩니다.
       await requestJson(`/api/me/agent/refactor/${refactorResult.id}/apply`, {
         method: "POST",
       });

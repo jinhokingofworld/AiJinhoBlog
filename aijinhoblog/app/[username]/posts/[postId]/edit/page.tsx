@@ -13,6 +13,8 @@ type Props = {
   }>;
 };
 
+// 글 수정 페이지입니다.
+// 서버에서 현재 유저가 URL의 username 주인인지 확인하고, 수정 대상 글을 initialPost로 PostForm에 넘깁니다.
 export default async function EditPostPage({ params }: Props) {
   const { username, postId } = await params;
   const currentUser = await getCurrentUser();
@@ -25,6 +27,8 @@ export default async function EditPostPage({ params }: Props) {
     notFound();
   }
 
+  // 실전 구현 포인트: 수정 페이지는 postId만 믿지 않고 authorId까지 함께 확인합니다.
+  // 이 조건이 없으면 다른 사용자의 postId를 URL에 넣어 수정 폼을 볼 수 있습니다.
   const post = await prisma.post.findFirst({
     where: {
       id: postId,

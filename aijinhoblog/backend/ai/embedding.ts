@@ -7,6 +7,8 @@ import "@/backend/core/env";
 
 export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 
+// OpenAI embedding 호출 래퍼입니다.
+// RAG와 벡터 인덱싱은 모두 "텍스트 -> 숫자 배열" 변환이 필요하고, 이 파일이 그 외부 API 경계입니다.
 export class EmbeddingSkippedError extends Error {
   constructor(message: string) {
     super(message);
@@ -76,6 +78,8 @@ export function createOpenAIEmbeddingClient(options: { apiKey?: string; model?: 
 
   const client: EmbeddingClient = {
     async embedDocuments(texts) {
+      // 실전 구현 포인트: OPENAI_API_KEY가 없으면 전체 앱을 죽이지 않고 SKIPPED 에러로 흐름을 분기합니다.
+      // 호출부는 이 에러를 받아 "AI 기능만 건너뜀" 상태로 DB에 기록합니다.
       if (!apiKey) {
         throw new EmbeddingSkippedError("OPENAI_API_KEY가 없어 embedding 생성을 건너뜁니다.");
       }
@@ -94,6 +98,8 @@ export function createOpenAIEmbeddingClient(options: { apiKey?: string; model?: 
       let result: RetryFetchResult<OpenAIEmbeddingResponse>;
 
       try {
+        // OpenAI Embeddings API 호출 지점입니다.
+        // fetchJsonWithRetry가 timeout/retry를 담당하고, 실패는 EmbeddingProviderError로 감싸 상위 계층이 같은 방식으로 처리합니다.
         result = await fetchJsonWithRetry<OpenAIEmbeddingResponse>(
           "https://api.openai.com/v1/embeddings",
           {

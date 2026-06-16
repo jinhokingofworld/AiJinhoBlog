@@ -13,6 +13,8 @@ type Params = {
   }>;
 };
 
+// POST /api/me/agent/refactor/:resultId/apply
+// 저장된 리팩토링 결과를 실제 게시글 본문에 반영하고 벡터 인덱스를 다시 동기화합니다.
 export async function POST(_request: Request, { params }: Params) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;

@@ -5,6 +5,8 @@ import { parseCredentials } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 
+// POST /api/auth/signup
+// 회원가입 페이지가 호출하는 API입니다. 입력 검증, 이메일/username 중복 확인, 비밀번호 hash 저장을 처리합니다.
 export async function POST(request: Request) {
   const payload = await readJson(request);
   const parsed = parseCredentials(payload, { requireName: true, requireUsername: true });
@@ -32,6 +34,7 @@ export async function POST(request: Request) {
     return fail("이미 사용 중인 username입니다.", 409);
   }
 
+  // 실전 구현 포인트: 비밀번호 원문은 저장하지 않고 hashPassword 결과만 저장합니다.
   const user = await prisma.user.create({
     data: {
       email: parsed.value.email,

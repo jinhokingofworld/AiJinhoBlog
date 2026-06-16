@@ -58,6 +58,8 @@ function createInitialState(folders: FolderOption[], initialPost?: InitialPost) 
   };
 }
 
+// 글 작성/수정 화면의 메인 클라이언트 컴포넌트입니다.
+// 흐름: 입력 state 관리 -> 임시저장/중복검사/저장 API 호출 -> 성공 시 상세 페이지로 이동합니다.
 export function PostForm({ username, mode, folders, initialPost }: Props) {
   const router = useRouter();
   const initialState = useMemo(
@@ -110,6 +112,7 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
   }, [isDirty]);
 
   async function loadDraftList() {
+    // 임시저장 목록은 처음 버튼을 눌렀을 때만 /api/me/posts/drafts에서 가져옵니다.
     setDraftsOpen((current) => !current);
 
     if (draftsLoaded) {
@@ -137,6 +140,8 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
   }
 
   function applyDraft(draft: DraftPost) {
+    // 임시저장을 불러오면 현재 form state를 draft 값으로 덮어씁니다.
+    // 이때 loadedDraftId를 기억해두면 이후 저장 시 새 글 생성이 아니라 해당 draft PATCH가 됩니다.
     if (isDirty && !window.confirm("현재 입력 중인 내용을 임시저장 글로 바꾸시겠습니까?")) {
       return;
     }
@@ -162,6 +167,8 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     setCheckingDuplicates(true);
     setError("");
 
+    // 게시 전 유사 자료 확인 흐름입니다.
+    // 입력 중인 제목/본문을 RAG 검색 쿼리로 바꿔 게시글, Dropbox, Notion 벡터에서 비슷한 자료를 찾습니다.
     const response = await fetch("/api/me/rag/duplicates", {
       method: "POST",
       headers: {
@@ -205,6 +212,8 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     setSaving(true);
     setError("");
 
+    // 실전 구현 포인트: 게시(PUBLISHED)할 때만 유사 자료 검사를 강제합니다.
+    // 임시저장(DRAFT)은 작업 중인 내용을 저장하는 용도라 중복 검사로 막지 않습니다.
     if (status === "PUBLISHED" && !options.skipDuplicateBlock) {
       const candidates =
         duplicateCheckedKey === duplicateKey
@@ -223,6 +232,8 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
       }
     }
 
+    // create/edit을 한 함수에서 처리합니다.
+    // activePostId가 없으면 POST /api/me/posts, 있으면 PATCH /api/me/posts/:postId로 보냅니다.
     const response = await fetch(activePostId ? `/api/me/posts/${activePostId}` : "/api/me/posts", {
       method: activePostId ? "PATCH" : "POST",
       headers: {
@@ -267,6 +278,8 @@ export function PostForm({ username, mode, folders, initialPost }: Props) {
     setSaving(true);
     setError("");
 
+    // 삭제도 소유자 전용 API를 통해 처리합니다.
+    // backend/posts/service.ts에서 벡터 삭제가 먼저 성공해야 DB 게시글 삭제까지 진행됩니다.
     const response = await fetch(`/api/me/posts/${initialPost.id}`, {
       method: "DELETE",
     });

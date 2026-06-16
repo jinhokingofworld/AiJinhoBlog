@@ -33,6 +33,8 @@ const postPayloadSchema = {
   visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PRIVATE"),
 };
 
+// MCP 도구 등록 파일입니다.
+// 브라우저 API route와 달리 MCP 호출에는 로그인 쿠키가 없으므로 ownerUsername/ownerEmail/ownerId 또는 환경변수로 소유자를 해석합니다.
 type OwnerInput = {
   ownerEmail?: string;
   ownerId?: string;
@@ -89,6 +91,8 @@ function createPostInput(input: {
 }
 
 export function createMcpOwnerWhere(input: OwnerInput = {}) {
+  // 실전 구현 포인트: MCP는 서버/에이전트가 직접 호출하므로 "현재 로그인 사용자" 개념이 없습니다.
+  // 그래서 tool input이 우선이고, 없으면 AIJINHOBLOG_MCP_OWNER_* 환경변수로 owner를 결정합니다.
   const ownerId = input.ownerId ?? process.env.AIJINHOBLOG_MCP_OWNER_ID;
   const ownerUsername = input.ownerUsername ?? process.env.AIJINHOBLOG_MCP_OWNER_USERNAME;
   const ownerEmail = input.ownerEmail ?? process.env.AIJINHOBLOG_MCP_OWNER_EMAIL;
@@ -134,6 +138,8 @@ export async function resolveMcpOwner(input: OwnerInput = {}) {
 }
 
 export function registerBlogMcpTools(server: McpServer) {
+  // MCP 외부 클라이언트에 노출할 블로그 도구들을 등록합니다.
+  // 각 tool은 owner 해석 -> backend/posts service 호출 -> JSON text 반환 순서로 동작합니다.
   server.registerTool(
     "blog_list_posts",
     {

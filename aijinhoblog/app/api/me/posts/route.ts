@@ -10,6 +10,9 @@ import { parsePostPayload } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 
+// POST /api/me/posts
+// PostForm의 새 글 저장 요청이 들어오는 API route입니다.
+// 흐름: 세션 확인/refresh -> payload 검증 -> AI rate limit -> createOwnerPost -> refreshed cookie 포함 응답.
 export async function POST(request: Request) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;
@@ -26,6 +29,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    // 게시글 저장은 AI 요약/벡터 인덱싱까지 이어질 수 있으므로 AI rate limit 버킷을 공유합니다.
     await enforceAiRateLimit({
       endpoint: "post.create",
       userId: user.id,

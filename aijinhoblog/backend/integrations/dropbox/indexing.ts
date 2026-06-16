@@ -53,6 +53,9 @@ type PipelineDependencies = {
   vectorStore?: VectorStore;
 };
 
+// Dropbox Markdown 외부지식 인덱싱 파이프라인입니다.
+// 흐름: Dropbox 파일 목록 조회 -> 파일 내용 읽기 -> DB 문서 upsert -> chunk/embedding -> ChromaDB upsert -> stale 문서 삭제.
+// 게시글 벡터와 같은 Chroma collection을 쓰지만 metadata sourceType을 DROPBOX_MD로 구분합니다.
 type IndexableDropboxMarkdownDocument = {
   id: string;
   ownerId: string;
@@ -83,6 +86,7 @@ function createDropboxMarkdownContentHash(file: DropboxMarkdownContent) {
 }
 
 function createChunkId(documentId: string, contentHash: string, chunkIndex: number) {
+  // documentId + contentHash + chunkIndex로 chunk id를 만들면 문서 내용 변경과 stale vector 삭제를 추적할 수 있습니다.
   return `dropbox-md:${documentId}:hash:${contentHash.slice(0, 16)}:chunk:${chunkIndex}`;
 }
 
@@ -99,6 +103,7 @@ function toVectorMetadata(
   chunkIndex: number,
   contentHash: string,
 ): VectorMetadata {
+  // 실전 구현 포인트: ownerId를 metadata에 넣어 RAG 검색 시 사용자별 Dropbox 문서만 조회합니다.
   return {
     sourceId: document.id,
     sourcePath: document.pathDisplay,
@@ -325,6 +330,8 @@ export async function upsertDropboxMarkdownDocument({
   ownerId: string;
   prisma?: PrismaClient;
 }) {
+  // Dropbox 원문 markdown과 RAG용 plainText를 DB에 저장합니다.
+  // Chroma에는 chunk만 들어가므로, 검색 결과를 보여줄 때 title/path/plainText는 이 DB row에서 다시 복원합니다.
   const contentHash = createDropboxMarkdownContentHash(file);
   const plainText = normalizeKnowledgeText(file.content);
 
@@ -368,6 +375,8 @@ export async function syncDropboxMarkdownVectorIndex(
   document: IndexableDropboxMarkdownDocument,
   dependencies: PipelineDependencies = {},
 ): Promise<DropboxVectorPipelineResult> {
+  // 단일 Dropbox Markdown 문서를 벡터화하는 흐름입니다.
+  // 게시글 인덱싱과 동일하게 chunk -> embedding -> Chroma upsert -> 이전 chunk 삭제 -> 상태 기록 순서로 진행됩니다.
   const prisma = dependencies.prisma ?? defaultPrisma;
   const embeddingClient = dependencies.embeddingClient ?? createOpenAIEmbeddingClient();
   const vectorStore = dependencies.vectorStore ?? createChromaVectorStore();
@@ -663,6 +672,8 @@ export async function syncDropboxMarkdownDocuments(
   } = {},
   dependencies: PipelineDependencies = {},
 ): Promise<DropboxMarkdownSyncResult> {
+  // Dropbox 폴더 단위 동기화의 메인 함수입니다.
+  // 원격 파일을 하나씩 DB/Chroma에 반영하고, 이번 동기화에서 보이지 않는 기존 문서는 stale로 보고 삭제합니다.
   const prisma = dependencies.prisma ?? defaultPrisma;
   const dropboxClient = dependencies.dropboxClient ?? createDropboxMarkdownClient();
   const result: DropboxMarkdownSyncResult = {

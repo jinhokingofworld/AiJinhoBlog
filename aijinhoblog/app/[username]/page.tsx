@@ -100,6 +100,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+// 블로그 홈(/:username)의 메인 서버 컴포넌트입니다.
+// 읽는 순서: URL 파라미터/쿼리 해석 -> 현재 로그인 유저와 블로그 주인 조회 -> 공개/비공개 접근 조건 생성 -> 게시글 목록 조회 -> JSX 렌더링.
 export default async function UserBlogPage({ params, searchParams }: Props) {
   const { username } = await params;
   const query = (await searchParams) ?? {};
@@ -124,6 +126,8 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
     notFound();
   }
 
+  // 실전 구현 포인트: 같은 페이지라도 주인인지 아닌지에 따라 볼 수 있는 데이터가 달라집니다.
+  // isOwner가 true면 비공개 글/관리 메뉴를 노출하고, 아니면 공개 글만 보이게 where 조건을 제한합니다.
   const isOwner = currentUser?.id === blog.id;
   const ownerStatusFilter = isOwner ? normalizeOwnerPostStatusFilter(query.status) : "all";
   const profile = serializeProfile(blog);
@@ -163,6 +167,8 @@ export default async function UserBlogPage({ params, searchParams }: Props) {
   const where = createPostAccessWhere(blog.id, currentUser?.id);
   Object.assign(where, createPostListFilterWhere({ query: searchQuery }));
 
+  // 목록 기본값은 게시된 글만 보여주는 것입니다.
+  // owner 필터가 있으면 아래에서 visibility를 덧붙여 공개/비공개 목록을 나눕니다.
   where.status = "PUBLISHED";
 
   if (selectedFolderId) {

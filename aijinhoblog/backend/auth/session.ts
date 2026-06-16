@@ -8,6 +8,10 @@ import { prisma } from "@/backend/core/prisma";
 export const ACCESS_TOKEN_COOKIE = "aij_access";
 export const REFRESH_TOKEN_COOKIE = "aij_refresh";
 
+// 인증 구조 요약:
+// - access token: 짧게 살아있는 JWT, 대부분의 요청에서 현재 userId를 빠르게 확인합니다.
+// - refresh token: 더 길게 살아있는 JWT, hash를 DB Session 테이블에 저장해 로그아웃/폐기를 제어합니다.
+// - 둘 다 httpOnly cookie에 담기 때문에 브라우저 JS는 토큰 값을 직접 읽지 못합니다.
 const ACCESS_TOKEN_TTL_MS = 1000 * 60 * 15;
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 14;
 
@@ -25,6 +29,8 @@ function createExpiresAt(ttlMs: number) {
 }
 
 export async function createUserSession(userId: string) {
+  // 실전 구현 포인트: refreshTokenId는 JWT의 jti에 들어가지만 DB에는 원문 토큰을 저장하지 않습니다.
+  // 아래에서 refresh JWT 전체를 hashSessionToken으로 해시해 저장하므로 DB 유출 시 원문 토큰 재사용을 줄입니다.
   const refreshTokenId = createSessionToken();
   const accessExpiresAt = createExpiresAt(ACCESS_TOKEN_TTL_MS);
   const refreshExpiresAt = createExpiresAt(REFRESH_TOKEN_TTL_MS);
@@ -59,6 +65,8 @@ export function attachSessionCookie(
   response: NextResponse,
   tokens: Awaited<ReturnType<typeof createUserSession>>,
 ) {
+  // 로그인 API 응답에 쿠키를 붙이는 지점입니다.
+  // 이후 브라우저는 같은 도메인 요청마다 이 쿠키를 자동으로 전송합니다.
   response.cookies.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, {
     httpOnly: true,
     sameSite: "lax",
@@ -112,6 +120,8 @@ async function readUserFromRefreshToken(token: string | undefined) {
     return null;
   }
 
+  // refresh token은 JWT 서명만 맞아도 통과시키지 않고 DB Session까지 확인합니다.
+  // 이 덕분에 로그아웃 시 Session row를 삭제해서 장기 토큰을 서버 측에서 무효화할 수 있습니다.
   const session = await prisma.session.findUnique({
     where: {
       tokenHash: hashSessionToken(token),
@@ -138,6 +148,8 @@ async function readUserFromRefreshToken(token: string | undefined) {
 export async function getCurrentUser(options: { allowRefreshToken?: boolean } = {}) {
   const allowRefreshToken = options.allowRefreshToken ?? true;
   const cookieStore = await cookies();
+  // 일반 요청에서는 먼저 access cookie를 읽어 JWT만 검증합니다.
+  // access token이 살아 있으면 refresh DB 조회 없이 바로 userId를 얻을 수 있습니다.
   const userId = readUserIdFromAccessToken(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value);
 
   if (userId) {
@@ -153,6 +165,7 @@ export async function getCurrentUser(options: { allowRefreshToken?: boolean } = 
     return null;
   }
 
+  // access token이 없거나 만료됐을 때만 refresh cookie + DB Session 확인으로 넘어갑니다.
   return readUserFromRefreshToken(cookieStore.get(REFRESH_TOKEN_COOKIE)?.value);
 }
 
@@ -235,6 +248,8 @@ export async function refreshUserSession() {
     return null;
   }
 
+  // 실전 구현 포인트: refresh token rotation.
+  // 기존 refresh Session을 삭제하고 새 access/refresh 쌍을 발급해 장기 토큰 재사용 위험을 줄입니다.
   await prisma.session.delete({ where: { id: session.id } }).catch(() => null);
   const tokens = await createUserSession(session.userId);
 

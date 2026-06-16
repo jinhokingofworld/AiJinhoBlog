@@ -51,6 +51,9 @@ type RagDependencies = {
   vectorStore?: QueryableVectorStore;
 };
 
+// RAG 파이프라인의 중심 파일입니다.
+// 검색 흐름: 질문 정규화 -> 질문 embedding -> ChromaDB query -> DB에서 source metadata 보강 -> hybrid score 정렬.
+// 답변 흐름: 검색 결과를 context로 묶기 -> OpenAI generation 호출 -> AiRequestLog 기록.
 type HydratedSource = {
   contentText: string | null;
   id: string;
@@ -215,6 +218,8 @@ function createLexicalSignal(result: KnowledgeSearchResult, queryTerms: string[]
 }
 
 function createHybridScore(result: KnowledgeSearchResult, queryTerms: string[]) {
+  // 실전 구현 포인트: 벡터 거리가 좋아도 실제 키워드가 전혀 안 맞으면 답변 품질이 흔들립니다.
+  // 그래서 vectorScore에 제목/경로/본문의 lexical match boost를 더해 재정렬합니다.
   const vectorScore = createScore(result.distance) ?? 0;
   const signal = createLexicalSignal(result, queryTerms);
   let lexicalBoost = 0;
@@ -393,6 +398,8 @@ async function hydrateSources({
   prisma: PrismaClient;
   username: string;
 }) {
+  // ChromaDB에는 chunk와 metadata만 있으므로, 사용자에게 보여줄 제목/URL/원문 근거는 DB에서 다시 가져옵니다.
+  // 이 hydration 단계에서 ownerId를 조건으로 걸어 다른 사용자의 외부지식이 섞이지 않게 합니다.
   const postIds = new Set<string>();
   const dropboxIds = new Set<string>();
   const notionPageIds = new Set<string>();
@@ -670,7 +677,9 @@ export async function searchKnowledgeSources({
   const safeLimit = clampLimit(limit);
   const candidateLimit = Math.min(MAX_CANDIDATE_LIMIT, Math.max(safeLimit, safeLimit * 8));
   const queryTerms = extractQueryTerms(normalizedQuery);
+  // 1. 질문 자체를 embedding으로 바꿉니다.
   const embedding = await embeddingClient.embedDocuments([normalizedQuery]);
+  // 2. 같은 Chroma collection에서 게시글(authorId)과 외부지식(ownerId)을 각각 검색합니다.
   const [postMatches, dropboxMatches] = await Promise.all([
     vectorStore.query({
       embedding: embedding.embeddings[0],
@@ -688,6 +697,7 @@ export async function searchKnowledgeSources({
     }),
   ]);
   const matches = sortMatches([...postMatches, ...dropboxMatches]);
+  // 3. Chroma match를 DB row와 다시 연결해 제목/경로/본문 근거를 복원합니다.
   const hydrated = await hydrateSources({
     matches,
     ownerId,
@@ -726,6 +736,8 @@ export async function answerMemoryQuestion({
   username: string;
 } & RagDependencies): Promise<RagAnswerResult> {
   try {
+    // 답변 생성 전 반드시 검색 근거를 먼저 만듭니다.
+    // 근거가 없으면 LLM을 호출하지 않고 "찾지 못했다"는 응답을 반환합니다.
     const sources = await searchKnowledgeSources({
       embeddingClient,
       limit,
@@ -758,6 +770,7 @@ export async function answerMemoryQuestion({
       };
     }
 
+    // 4. 검색된 근거 chunk들을 context로 묶고, generation client가 최종 답변을 만듭니다.
     const generated = await generationClient.generateAnswer({
       context: createContext(sources),
       question,

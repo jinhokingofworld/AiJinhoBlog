@@ -14,6 +14,8 @@ import { fail } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 
+// GET /api/me/connections/dropbox/start
+// Dropbox OAuth 시작 route입니다. 로그인 사용자를 확인하고 Dropbox authorize URL로 redirect합니다.
 function normalizeReturnTo(value: string | null, fallback: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("://")) {
     return fallback;
@@ -47,6 +49,8 @@ export async function GET(request: Request) {
   );
 
   try {
+    // state에는 ownerId와 returnTo가 들어갑니다.
+    // callback에서 같은 로그인 사용자와 매칭되는지 검증해 OAuth CSRF를 줄입니다.
     const redirectUrl = createDropboxOAuthAuthorizeUrl({
       origin: requestUrl.origin,
       state: createDropboxOAuthState(user.id, {

@@ -13,6 +13,8 @@ import { fail } from "@/backend/core/http";
 
 export const runtime = "nodejs";
 
+// GET /api/me/connections/dropbox/callback
+// Dropbox가 돌려준 code/state를 검증하고, code를 token으로 교환해 사용자별 연결로 저장합니다.
 function createSettingsRedirect(
   username: string,
   requestUrl: string,
@@ -83,6 +85,7 @@ export async function GET(request: Request) {
   }
 
   try {
+    // code -> access/refresh token 교환 후 ExternalKnowledgeConnection에 암호화 저장합니다.
     const tokens = await exchangeDropboxOAuthCode({
       code,
       origin: requestUrl.origin,

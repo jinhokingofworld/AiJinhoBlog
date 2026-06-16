@@ -17,6 +17,8 @@ type AnswerPayload = {
   question?: unknown;
 };
 
+// POST /api/me/rag/answer
+// 질문 -> 벡터 검색 -> 근거 context 구성 -> OpenAI 답변 생성까지 수행하는 RAG 답변 API입니다.
 function parseAnswerPayload(payload: unknown) {
   const value = (payload ?? {}) as AnswerPayload;
 
@@ -66,6 +68,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    // 답변 생성은 embedding, Chroma query, LLM generation이 모두 포함되어 가장 무거운 RAG 경로입니다.
     await enforceAiRateLimit({
       endpoint: "rag.answer",
       userId: user.id,

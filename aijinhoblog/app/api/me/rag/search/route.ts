@@ -16,6 +16,8 @@ type SearchPayload = {
   query?: unknown;
 };
 
+// POST /api/me/rag/search
+// 질문을 embedding으로 바꿔 ChromaDB에서 관련 게시글/외부지식 chunk를 찾는 검색 전용 API입니다.
 function parseSearchPayload(payload: unknown) {
   const value = (payload ?? {}) as SearchPayload;
 
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    // RAG 검색은 OpenAI embedding + Chroma query를 사용하므로 rate limit 대상입니다.
     await enforceAiRateLimit({
       endpoint: "rag.search",
       userId: user.id,

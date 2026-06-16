@@ -18,6 +18,9 @@ type DuplicatePayload = {
   title?: unknown;
 };
 
+// POST /api/me/rag/duplicates
+// 글쓰기 폼의 "유사 자료 확인"에서 호출됩니다.
+// 작성 중인 글을 RAG 검색 쿼리로 만들어 기존 게시글/Dropbox/Notion 자료와 겹치는지 확인합니다.
 function parseDuplicatePayload(payload: unknown) {
   const value = (payload ?? {}) as DuplicatePayload;
 

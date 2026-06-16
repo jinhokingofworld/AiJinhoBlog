@@ -21,6 +21,8 @@ function parseRewritePayload(payload: unknown) {
   };
 }
 
+// POST /api/me/agent/rewrite
+// 입력 text를 사용자의 문체 프로파일 기준으로 재작성합니다.
 export async function POST(request: Request) {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;

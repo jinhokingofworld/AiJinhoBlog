@@ -12,6 +12,8 @@ import {
 
 export const runtime = "nodejs";
 
+// GET /api/me/agent/style-profile
+// 저장된 문체 프로파일을 조회합니다. 없으면 null을 반환하고 생성은 POST가 담당합니다.
 export async function GET() {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;
@@ -31,6 +33,8 @@ export async function GET() {
   }
 }
 
+// POST /api/me/agent/style-profile
+// 최근 글을 다시 분석해 문체 프로파일을 생성/갱신합니다.
 export async function POST() {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;

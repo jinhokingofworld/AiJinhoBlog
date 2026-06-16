@@ -43,6 +43,8 @@ type PipelineDependencies = {
   vectorStore?: VectorStore;
 };
 
+// 게시글 벡터 인덱싱 파이프라인입니다.
+// 흐름: 게시글 텍스트 구성 -> chunk 분할 -> OpenAI embedding -> ChromaDB upsert -> 이전 chunk 삭제 -> DB 상태/로그 기록.
 function readChunkIds(value: unknown) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -50,6 +52,7 @@ function readChunkIds(value: unknown) {
 }
 
 function createChunkId(postId: string, contentHash: string, chunkIndex: number) {
+  // contentHash를 chunk id에 넣어 글 내용이 바뀌었을 때 새 벡터와 예전 벡터를 구분합니다.
   return `post:${postId}:hash:${contentHash.slice(0, 16)}:chunk:${chunkIndex}`;
 }
 
@@ -58,6 +61,7 @@ function toVectorMetadata(
   chunkIndex: number,
   contentHash: string,
 ): VectorMetadata {
+  // 실전 구현 포인트: metadata에 authorId/status/visibility를 넣어 검색 시 사용자 격리와 공개 범위 필터링이 가능하게 합니다.
   return {
     sourceId: post.id,
     sourceTitle: post.title,
@@ -328,6 +332,7 @@ export async function syncPostVectorIndex(
       };
     }
 
+    // 1. chunk들을 embedding으로 변환합니다.
     const embeddingResult = await embeddingClient.embedDocuments(chunks);
 
     await writeAiLog({
@@ -346,6 +351,7 @@ export async function syncPostVectorIndex(
       totalTokens: embeddingResult.usage.totalTokens,
     });
 
+    // 2. embedding + 원문 chunk + metadata를 ChromaDB에 저장합니다.
     const upsertResult = await vectorStore.upsert(
       chunks.map((chunk, index) => ({
         id: chunkIds[index],
@@ -372,6 +378,7 @@ export async function syncPostVectorIndex(
     });
     const obsoleteChunkIds = previousChunkIds.filter((id) => !chunkIds.includes(id));
 
+    // 3. 새 contentHash에 더 이상 속하지 않는 예전 chunk를 삭제합니다.
     await deleteExistingChunks({
       chunkIds: obsoleteChunkIds,
       post,
@@ -397,6 +404,7 @@ export async function syncPostVectorIndex(
     };
   } catch (error) {
     if (error instanceof EmbeddingSkippedError) {
+      // OPENAI_API_KEY가 없는 개발 환경에서는 기존 벡터를 보존하고 SKIPPED 상태로 남깁니다.
       const skippedContentHash = previousChunkIds.length ? previousContentHash : contentHash;
 
       await writeVectorIndex({

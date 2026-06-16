@@ -26,6 +26,8 @@ type SyncPayload = {
   recursive?: unknown;
 };
 
+// POST /api/me/dropbox/markdown/sync
+// 연결된 Dropbox 계정의 Markdown 파일을 DB와 ChromaDB 벡터로 동기화하는 API입니다.
 function parseSyncPayload(payload: unknown) {
   const value = (payload ?? {}) as SyncPayload;
 
@@ -90,7 +92,9 @@ export async function POST(request: Request) {
       endpoint: "dropbox.markdown.sync",
       userId: user.id,
     });
+    // 실전 구현 포인트: 전역 DROPBOX_ACCESS_TOKEN이 아니라 로그인 사용자(ownerId)의 저장된 연결에서 token을 가져옵니다.
     const accessToken = await getDropboxConnectionAccessToken(user.id);
+    // Dropbox 파일 읽기와 문서별 embedding/Chroma upsert는 indexing 계층이 처리합니다.
     const sync = await syncDropboxMarkdownDocuments(user.id, options, {
       dropboxClient: createDropboxMarkdownClient({ accessToken }),
     });

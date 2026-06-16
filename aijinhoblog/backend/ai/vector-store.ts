@@ -32,6 +32,8 @@ export type VectorStore = {
   delete(ids: string[]): Promise<VectorOperationResult | void>;
 };
 
+// ChromaDB HTTP API를 감싼 저장소 어댑터입니다.
+// backend/ai/indexing.ts와 rag.ts는 Chroma 세부 URL을 모르고 upsert/delete/query 인터페이스만 사용합니다.
 export type QueryableVectorStore = VectorStore & {
   query(options: {
     embedding: number[];
@@ -128,6 +130,8 @@ export function createChromaVectorStore(
   const database = options.database ?? process.env.CHROMA_DATABASE ?? "default_database";
 
   async function getCollectionId() {
+    // 실전 구현 포인트: Chroma collection은 매번 get_or_create로 보장합니다.
+    // 로컬 개발에서 ChromaDB가 비어 있어도 첫 upsert/query 전에 collection을 만들 수 있습니다.
     const result = await requestChroma<ChromaCollection>(
       "collection",
       createChromaUrl(
@@ -169,6 +173,8 @@ export function createChromaVectorStore(
       }
 
       const collection = await getCollectionId();
+      // upsert는 같은 id의 chunk를 덮어씁니다.
+      // 그래서 chunk id에 postId/documentId + contentHash + chunkIndex를 넣어 내용 변경을 추적합니다.
       const result = await requestChroma(
         "upsert",
         createChromaUrl(
@@ -230,6 +236,7 @@ export function createChromaVectorStore(
       }
 
       const collection = await getCollectionId();
+      // RAG 검색 지점입니다. where에는 authorId/ownerId를 넣어 사용자별 벡터 격리를 유지합니다.
       const result = await requestChroma<{
         distances?: Array<Array<number | null>>;
         documents?: Array<Array<string | null>>;

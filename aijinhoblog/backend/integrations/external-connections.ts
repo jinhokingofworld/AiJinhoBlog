@@ -15,6 +15,9 @@ import { prisma as defaultPrisma } from "@/backend/core/prisma";
 
 const TOKEN_REFRESH_BUFFER_MS = 1000 * 60;
 
+// 외부지식 연결 관리 계층입니다.
+// 현재 Dropbox를 구현했고, ExternalKnowledgeConnection 모델을 provider별 사용자 연결 registry로 사용합니다.
+// 실전 구현 포인트: provider token은 원문 저장하지 않고 AES-GCM ciphertext로 저장합니다.
 export {
   decryptExternalToken,
   encryptExternalToken,
@@ -145,6 +148,8 @@ export async function getDropboxConnectionAccessToken(
     return decryptExternalToken(connection.accessTokenCiphertext);
   }
 
+  // Dropbox access token이 만료 직전이면 refresh token으로 새 access token을 받고 DB ciphertext를 즉시 갱신합니다.
+  // RAG/동기화 route는 이 함수를 통해 항상 사용자별 최신 token을 얻습니다.
   if (!connection.refreshTokenCiphertext) {
     await markExternalConnectionError(
       ownerId,
@@ -192,6 +197,8 @@ export async function upsertDropboxConnectionFromOAuth(
   payload: DropboxOAuthTokenPayload,
   prisma: ExternalConnectionPrisma = defaultPrisma,
 ) {
+  // OAuth callback에서 받은 token을 ExternalKnowledgeConnection에 저장하는 지점입니다.
+  // ownerId_provider unique key 덕분에 사용자가 Dropbox를 다시 연결하면 기존 연결을 갱신합니다.
   const expiresAt =
     payload.expiresIn && payload.expiresIn > 0
       ? new Date(Date.now() + payload.expiresIn * 1000)

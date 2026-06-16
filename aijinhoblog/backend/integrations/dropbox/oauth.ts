@@ -7,6 +7,9 @@ const DROPBOX_OAUTH_TOKEN_URL = "https://api.dropboxapi.com/oauth2/token";
 const DEFAULT_DROPBOX_SCOPES = "files.metadata.read files.content.read";
 const DROPBOX_STATE_TTL_MS = 1000 * 60 * 10;
 
+// Dropbox OAuth 구현입니다.
+// start route가 authorize URL을 만들고, callback route가 code를 access/refresh token으로 교환합니다.
+// 실전 구현 포인트: state도 JWT로 만들어 ownerId와 returnTo를 묶어 callback 변조를 막습니다.
 export type DropboxOAuthStatePayload = {
   returnTo: string | null;
 };
@@ -135,6 +138,8 @@ export function createDropboxOAuthAuthorizeUrl({
 }) {
   const url = new URL(DROPBOX_OAUTH_AUTHORIZE_URL);
 
+  // token_access_type=offline이 있어야 refresh_token을 받을 수 있습니다.
+  // 이 값이 없으면 사용자가 연결한 뒤 시간이 지나 access token이 만료됐을 때 자동 갱신이 어렵습니다.
   url.searchParams.set("client_id", getDropboxAppKey());
   url.searchParams.set("redirect_uri", getDropboxOAuthRedirectUri(origin));
   url.searchParams.set("response_type", "code");
@@ -172,6 +177,7 @@ export async function exchangeDropboxOAuthCode({
   code: string;
   origin?: string;
 }) {
+  // OAuth callback의 code를 Dropbox token endpoint로 교환하는 지점입니다.
   const body = new URLSearchParams({
     code,
     grant_type: "authorization_code",

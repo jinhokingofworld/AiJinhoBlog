@@ -24,6 +24,9 @@ export const POST_EXCERPT_SYSTEM_PROMPT =
 
 export type PostListSort = "latest" | "oldest";
 
+// 게시글 서비스 계층입니다.
+// app/api route는 HTTP/세션/응답 변환을 맡고, 이 파일은 게시글 도메인 로직과 AI side effect를 맡습니다.
+// 실전 구현 포인트: create/update/delete는 DB만 바꾸지 않고 요약 생성, tag 처리, Chroma 벡터 동기화까지 함께 처리합니다.
 export const postSummaryInclude = {
   author: {
     select: {
@@ -283,6 +286,8 @@ export async function generatePostExcerpt(
   }
 
   try {
+    // 게시글 목록에 쓰는 excerpt는 OpenAI 생성 결과를 우선 사용하되,
+    // API key가 없거나 provider 오류가 나면 저장 자체를 막지 않고 fallback 요약으로 진행합니다.
     const generated = await generationClient.generateAnswer({
       context: `제목:\n${input.title}\n\n본문:\n${input.content.slice(0, 6000)}`,
       question: "이 블로그 글의 목록용 요약을 한 문장으로 작성해줘.",
@@ -306,6 +311,8 @@ export function createPostAccessWhere(authorId: string, currentUserId?: string |
     authorId,
   };
 
+  // 주인이 아닌 사용자는 PUBLISHED + PUBLIC 글만 볼 수 있습니다.
+  // 페이지와 API가 같은 접근 규칙을 쓰도록 where 생성 함수를 한 곳에 둡니다.
   if (currentUserId !== authorId) {
     where.status = "PUBLISHED";
     where.visibility = "PUBLIC";
@@ -428,6 +435,11 @@ export async function createOwnerPost(
   input: PostInput,
   dependencies: PostServiceDependencies = {},
 ): Promise<PostMutationResult> {
+  // 생성 흐름:
+  // 1) 폴더 소유권 확인
+  // 2) excerpt 생성
+  // 3) Post/Tag DB 저장
+  // 4) 저장된 글을 OpenAI embedding + ChromaDB 벡터로 인덱싱
   const folder = await resolvePostFolderId(ownerId, input.folderId);
 
   if (!folder.ok) {
@@ -465,6 +477,8 @@ export async function updateOwnerPost(
   input: PostInput,
   dependencies: PostServiceDependencies = {},
 ): Promise<PostMutationResult> {
+  // 수정 흐름도 생성과 거의 같습니다.
+  // 차이는 postId가 실제 ownerId 소유인지 먼저 확인하고, 기존 tag 연결을 지운 뒤 새 tag를 다시 연결한다는 점입니다.
   const post = await prisma.post.findUnique({
     where: {
       id: postId,
@@ -528,6 +542,8 @@ export async function deleteOwnerPost(
   postId: string,
   dependencies: PostServiceDependencies = {},
 ) {
+  // 삭제 흐름의 순서가 중요합니다.
+  // ChromaDB 벡터 삭제가 실패했는데 DB 게시글만 지우면 고아 벡터가 남아 RAG 검색에 섞일 수 있습니다.
   const post = await prisma.post.findUnique({
     where: {
       id: postId,

@@ -8,6 +8,8 @@ import { getWritingInsights, toWritingAgentErrorResponse } from "@/backend/ai/wr
 
 export const runtime = "nodejs";
 
+// GET /api/me/agent/insights
+// 최근 글 기반 관심 주제/글감 추천을 반환합니다. 실제 분석은 getWritingInsights가 담당합니다.
 export async function GET() {
   const auth = await getCurrentUserOrRefresh();
   const user = auth.user;

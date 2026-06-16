@@ -11,6 +11,8 @@ type Props = {
   }>;
 };
 
+// 새 글 작성 페이지입니다.
+// 서버에서 로그인/소유자 검증과 폴더 목록 준비만 하고, 실제 입력/저장은 PostForm 클라이언트 컴포넌트가 처리합니다.
 export default async function NewPostPage({ params }: Props) {
   const { username } = await params;
   const currentUser = await getCurrentUser();
@@ -23,6 +25,7 @@ export default async function NewPostPage({ params }: Props) {
     notFound();
   }
 
+  // 글 작성 폼에는 최소 1개 폴더가 필요하므로 기본 폴더를 보장한 뒤 목록을 내려줍니다.
   await ensureDefaultFolder(currentUser.id);
   const folders = await listFolders(currentUser.id);
 

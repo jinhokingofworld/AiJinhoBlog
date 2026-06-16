@@ -19,6 +19,8 @@ type AgentDependencies = {
   syncPostVectorIndex?: typeof defaultSyncPostVectorIndex;
 };
 
+// 글쓰기 Agent의 서버 도메인 로직입니다.
+// 실제 LLM 호출은 generationClient.generateAnswer(...)에 모이고, API route들은 이 파일의 함수만 호출합니다.
 const STYLE_PROFILE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type RecentPost = {
@@ -157,6 +159,8 @@ async function maybeGenerateAgentSummary({
 }
 
 export async function getWritingInsights(ownerId: string, dependencies: AgentDependencies = {}) {
+  // 관심 주제/글감 추천 흐름입니다.
+  // 최근 글과 태그를 기반으로 deterministic 추천을 먼저 만들고, 가능하면 LLM이 요약 설명을 덧붙입니다.
   const prisma = dependencies.prisma ?? defaultPrisma;
   const generationClient = dependencies.generationClient ?? createOpenAIGenerationClient();
   const posts = await prisma.post.findMany({
@@ -239,6 +243,8 @@ async function createToneSummary(posts: RecentPost[], generationClient: Generati
   }
 
   try {
+    // 문체 프로파일의 핵심 AI 호출입니다.
+    // 최근 글 샘플을 context로 넣고 어조/문장 습관/관점을 요약합니다.
     const generated = await generationClient.generateAnswer({
       context: posts
         .slice(0, 8)
@@ -262,6 +268,8 @@ export async function refreshWritingStyleProfile(
   ownerId: string,
   dependencies: AgentDependencies = {},
 ) {
+  // 문체 프로파일 생성/갱신 흐름입니다.
+  // LLM 기반 toneSummary와 deterministic sentence/frequent expression 분석을 DB에 upsert합니다.
   const prisma = dependencies.prisma ?? defaultPrisma;
   const generationClient = dependencies.generationClient ?? createOpenAIGenerationClient();
   const posts = await prisma.post.findMany({
@@ -337,6 +345,8 @@ export async function rewriteInUserStyle({
   ownerId: string;
   text: string;
 }) {
+  // 내 문체로 다시쓰기 흐름입니다.
+  // 오래된 profile이면 먼저 갱신하고, profile 내용을 prompt context로 넣어 입력 text를 재작성합니다.
   const generationClient = dependencies.generationClient ?? createOpenAIGenerationClient();
   const currentProfile = await getWritingStyleProfile(ownerId, dependencies);
   let profile = currentProfile;
@@ -378,6 +388,8 @@ export async function refactorForPublication({
   postId?: string | null;
   text?: string | null;
 }) {
+  // 게시글 리팩토링 흐름입니다.
+  // 원본 게시글 또는 직접 입력 text를 LLM에 보내되, 결과를 즉시 Post에 반영하지 않고 WritingRefactorResult로 저장합니다.
   const prisma = dependencies.prisma ?? defaultPrisma;
   const generationClient = dependencies.generationClient ?? createOpenAIGenerationClient();
   const post = postId
@@ -433,6 +445,8 @@ export async function applyRefactorResult({
   ownerId: string;
   resultId: string;
 }) {
+  // 리팩토링 결과 적용 흐름입니다.
+  // 저장된 revisedText를 실제 게시글 content에 반영한 뒤, RAG 검색 결과가 최신화되도록 벡터를 재인덱싱합니다.
   const prisma = dependencies.prisma ?? defaultPrisma;
   const syncPostVectorIndex = dependencies.syncPostVectorIndex ?? defaultSyncPostVectorIndex;
   const result = await prisma.writingRefactorResult.findFirst({
