@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -12,15 +12,26 @@
     "prisma:validate": "prisma validate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
+    "ai:backfill": "tsx scripts/backfill-vector-index.ts",
+    "dropbox:sync": "tsx scripts/sync-dropbox-markdown.ts",
+    "mcp:server": "tsx scripts/mcp-server.ts",
+    "mcp:smoke": "tsx scripts/mcp-smoke-test.ts",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },
+  "overrides": {
+    "@hono/node-server": "1.19.13",
+    "postcss": "8.5.15"
+  },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "marked": "^18.0.5",
     "next": "16.2.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -33,6 +44,7 @@
     "prettier": "^3.8.4",
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.1.8"
   }

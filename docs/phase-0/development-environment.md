@@ -40,9 +40,9 @@ npm run install:all
 
 ## 4. 환경 변수
 
-공유 가능한 기본값은 `.env.example`과 `aijinhoblog/.env.example`에 둔다.
+공유 가능한 기본값은 루트 `.env.example`에 둔다.
 
-실제 비밀값은 `.env`와 `aijinhoblog/.env`에만 작성하고 커밋하지 않는다.
+실제 비밀값은 루트 `.env`에만 작성하고 커밋하지 않는다.
 
 기본 로컬 값은 다음과 같다.
 

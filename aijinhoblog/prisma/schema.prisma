@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../lib/generated/prisma"
+  output   = "../backend/generated/prisma"
 }
 
 datasource db {
@@ -8,15 +8,31 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique @db.VarChar(191)
-  name         String    @db.VarChar(80)
-  passwordHash String    @db.VarChar(255)
-  posts        Post[]
-  comments     Comment[]
-  sessions     Session[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                           String                       @id @default(cuid())
+  email                        String                       @unique @db.VarChar(191)
+  username                     String                       @unique @db.VarChar(30)
+  name                         String                       @db.VarChar(80)
+  intro                        String?                      @db.VarChar(50)
+  blogTitle                    String                       @default("AiJinhoBlog") @db.VarChar(80)
+  profileImageUrl              String?                      @db.VarChar(255)
+  coverImageUrl                String?                      @db.VarChar(255)
+  passwordHash                 String                       @db.VarChar(255)
+  folders                      Folder[]
+  posts                        Post[]
+  comments                     Comment[]
+  sessions                     Session[]
+  vectorIndexes                PostVectorIndex[]
+  dropboxMarkdownDocuments     DropboxMarkdownDocument[]
+  dropboxMarkdownVectorIndexes DropboxMarkdownVectorIndex[]
+  notionPageDocuments          NotionPageDocument[]
+  notionPageVectorIndexes      NotionPageVectorIndex[]
+  externalKnowledgeConnections ExternalKnowledgeConnection[]
+  aiRequestLogs                AiRequestLog[]
+  aiRateLimitBuckets           AiRateLimitBucket[]
+  writingStyleProfile          WritingStyleProfile?
+  writingRefactorResults       WritingRefactorResult[]
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime                     @updatedAt
 }
 
 model Session {
@@ -31,20 +47,80 @@ model Session {
   @@index([expiresAt])
 }
 
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PostVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum VectorIndexStatus {
+  PENDING
+  INDEXED
+  SKIPPED
+  FAILED
+  DELETED
+}
+
+enum AiRequestStatus {
+  SUCCESS
+  SKIPPED
+  FAILED
+}
+
+enum ExternalKnowledgeProvider {
+  DROPBOX
+  NOTION
+}
+
+enum ExternalKnowledgeConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
 model Post {
-  id        String    @id @default(cuid())
-  title     String    @db.VarChar(160)
-  excerpt   String?   @db.VarChar(280)
-  content   String    @db.Text
-  authorId  String
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments  Comment[]
-  tags      PostTag[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String           @id @default(cuid())
+  title         String           @db.VarChar(160)
+  excerpt       String?          @db.VarChar(280)
+  content       String           @db.Text
+  status        PostStatus       @default(PUBLISHED)
+  visibility    PostVisibility   @default(PUBLIC)
+  publishedAt   DateTime?
+  authorId      String
+  author        User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  folderId      String?
+  folder        Folder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  comments      Comment[]
+  tags          PostTag[]
+  vectorIndex   PostVectorIndex?
+  aiRequestLogs AiRequestLog[]
+  refactorResults WritingRefactorResult[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   @@index([authorId, createdAt])
+  @@index([authorId, status, visibility, createdAt])
+  @@index([folderId])
   @@index([createdAt])
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(80)
+  position  Int      @default(0)
+  isDefault Boolean  @default(false)
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, name])
+  @@index([ownerId, position])
 }
 
 model Comment {
@@ -76,4 +152,199 @@ model PostTag {
 
   @@id([postId, tagId])
   @@index([tagId])
+}
+
+model PostVectorIndex {
+  id            String            @id @default(cuid())
+  postId        String            @unique
+  post          Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  status        VectorIndexStatus @default(PENDING)
+  contentHash   String?           @db.Char(64)
+  chunkCount    Int               @default(0)
+  chunkIds      Json?
+  errorMessage  String?           @db.Text
+  lastIndexedAt DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([authorId, status])
+  @@index([updatedAt])
+}
+
+model DropboxMarkdownDocument {
+  id             String                      @id @default(cuid())
+  ownerId        String
+  owner          User                        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  dropboxFileId  String                      @db.VarChar(191)
+  name           String                      @db.VarChar(255)
+  pathDisplay    String                      @db.VarChar(512)
+  pathLower      String                      @db.VarChar(512)
+  rev            String?                     @db.VarChar(100)
+  serverModified DateTime?
+  size           Int?
+  contentHash    String?                     @db.Char(64)
+  markdown       String                      @db.LongText
+  plainText      String                      @db.LongText
+  vectorIndex    DropboxMarkdownVectorIndex?
+  aiRequestLogs  AiRequestLog[]
+  lastSyncedAt   DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@unique([ownerId, pathLower])
+  @@index([ownerId, updatedAt])
+}
+
+model DropboxMarkdownVectorIndex {
+  id            String                  @id @default(cuid())
+  documentId    String                  @unique
+  document      DropboxMarkdownDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User                    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  status        VectorIndexStatus       @default(PENDING)
+  contentHash   String?                 @db.Char(64)
+  chunkCount    Int                     @default(0)
+  chunkIds      Json?
+  errorMessage  String?                 @db.Text
+  lastIndexedAt DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([ownerId, status])
+  @@index([updatedAt])
+}
+
+model NotionPageDocument {
+  id             String                 @id @default(cuid())
+  ownerId        String
+  owner          User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  notionPageId   String                 @db.VarChar(191)
+  title          String                 @db.VarChar(255)
+  url            String?                @db.VarChar(1024)
+  lastEditedAt   DateTime?
+  contentHash    String?                @db.Char(64)
+  plainText      String                 @db.LongText
+  vectorIndex    NotionPageVectorIndex?
+  aiRequestLogs  AiRequestLog[]
+  lastSyncedAt   DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([ownerId, notionPageId])
+  @@index([ownerId, updatedAt])
+}
+
+model NotionPageVectorIndex {
+  id            String              @id @default(cuid())
+  documentId    String              @unique
+  document      NotionPageDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  status        VectorIndexStatus   @default(PENDING)
+  contentHash   String?             @db.Char(64)
+  chunkCount    Int                 @default(0)
+  chunkIds      Json?
+  errorMessage  String?             @db.Text
+  lastIndexedAt DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([ownerId, status])
+  @@index([updatedAt])
+}
+
+model ExternalKnowledgeConnection {
+  id                     String                            @id @default(cuid())
+  ownerId                String
+  owner                  User                              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  provider               ExternalKnowledgeProvider
+  providerAccountId      String?                           @db.VarChar(191)
+  providerAccountName    String?                           @db.VarChar(191)
+  scope                  String?                           @db.VarChar(512)
+  accessTokenCiphertext  String                            @db.Text
+  refreshTokenCiphertext String?                           @db.Text
+  expiresAt              DateTime?
+  status                 ExternalKnowledgeConnectionStatus @default(CONNECTED)
+  lastSyncedAt           DateTime?
+  lastError              String?                           @db.Text
+  createdAt              DateTime                          @default(now())
+  updatedAt              DateTime                          @updatedAt
+
+  @@unique([ownerId, provider])
+  @@index([ownerId, status])
+}
+
+model AiRequestLog {
+  id                        String                   @id @default(cuid())
+  purpose                   String                   @db.VarChar(80)
+  provider                  String                   @db.VarChar(40)
+  model                     String?                  @db.VarChar(100)
+  status                    AiRequestStatus
+  inputTokens               Int?
+  outputTokens              Int?
+  totalTokens               Int?
+  errorMessage              String?                  @db.Text
+  metadata                  Json?
+  postId                    String?
+  post                      Post?                    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  dropboxMarkdownDocumentId String?
+  dropboxMarkdownDocument   DropboxMarkdownDocument? @relation(fields: [dropboxMarkdownDocumentId], references: [id], onDelete: SetNull)
+  notionPageDocumentId      String?
+  notionPageDocument        NotionPageDocument?      @relation(fields: [notionPageDocumentId], references: [id], onDelete: SetNull)
+  userId                    String?
+  user                      User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt                 DateTime                 @default(now())
+
+  @@index([postId, createdAt])
+  @@index([dropboxMarkdownDocumentId, createdAt])
+  @@index([notionPageDocumentId, createdAt])
+  @@index([userId, createdAt])
+  @@index([purpose, status, createdAt])
+}
+
+model AiRateLimitBucket {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint     String   @db.VarChar(120)
+  windowStart  DateTime
+  requestCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, endpoint, windowStart])
+  @@index([userId, endpoint, windowStart])
+}
+
+model WritingStyleProfile {
+  id                  String   @id @default(cuid())
+  ownerId             String   @unique
+  owner               User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  toneSummary         String   @db.Text
+  sentenceSummary     String   @db.Text
+  frequentExpressions Json?
+  samplePostIds       Json?
+  lastAnalyzedAt      DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model WritingRefactorResult {
+  id            String   @id @default(cuid())
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  postId        String?
+  post          Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  mode          String   @db.VarChar(40)
+  originalText  String   @db.LongText
+  revisedText   String   @db.LongText
+  changeSummary String   @db.Text
+  appliedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([ownerId, createdAt])
+  @@index([postId])
 }

@@ -1,0 +1,5 @@
+ALTER TABLE `User`
+  ADD COLUMN `intro` VARCHAR(50) NULL,
+  ADD COLUMN `blogTitle` VARCHAR(80) NOT NULL DEFAULT 'AiJinhoBlog',
+  ADD COLUMN `profileImageUrl` VARCHAR(255) NULL,
+  ADD COLUMN `coverImageUrl` VARCHAR(255) NULL;

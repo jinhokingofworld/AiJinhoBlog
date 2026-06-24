@@ -12,6 +12,7 @@
     "prisma:validate": "npm --prefix aijinhoblog run prisma:validate",
     "prisma:migrate": "npm --prefix aijinhoblog run prisma:migrate",
     "prisma:migrate:dev": "npm --prefix aijinhoblog run prisma:migrate:dev",
+    "ai:backfill": "npm --prefix aijinhoblog run ai:backfill --",
     "format": "aijinhoblog/node_modules/.bin/prettier . --write",
     "format:check": "aijinhoblog/node_modules/.bin/prettier . --check",
     "services:up": "docker compose up -d",

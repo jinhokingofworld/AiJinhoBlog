@@ -1,8 +1,12 @@
-import { getCurrentUser } from "@/lib/auth";
-import { fail, json, readJson } from "@/lib/http";
-import { serializeComment } from "@/lib/posts";
-import { prisma } from "@/lib/prisma";
-import { parseCommentPayload } from "@/lib/validation";
+import {
+  attachRefreshedSessionCookie,
+  failWithRefreshedSession,
+  getCurrentUserOrRefresh,
+} from "@/backend/auth/session";
+import { fail, json, readJson } from "@/backend/core/http";
+import { canReadPost, serializeComment } from "@/backend/posts/service";
+import { prisma } from "@/backend/core/prisma";
+import { parseCommentPayload } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 
@@ -13,7 +17,8 @@ type Params = {
 };
 
 export async function POST(request: Request, { params }: Params) {
-  const user = await getCurrentUser();
+  const auth = await getCurrentUserOrRefresh();
+  const user = auth.user;
 
   if (!user) {
     return fail("로그인이 필요합니다.", 401);
@@ -24,7 +29,7 @@ export async function POST(request: Request, { params }: Params) {
   const parsed = parseCommentPayload(payload);
 
   if (!parsed.ok) {
-    return fail(parsed.error, 400);
+    return failWithRefreshedSession(parsed.error, auth, 400);
   }
 
   const post = await prisma.post.findUnique({
@@ -33,11 +38,14 @@ export async function POST(request: Request, { params }: Params) {
     },
     select: {
       id: true,
+      authorId: true,
+      status: true,
+      visibility: true,
     },
   });
 
-  if (!post) {
-    return fail("게시글을 찾을 수 없습니다.", 404);
+  if (!post || !canReadPost(post, user.id)) {
+    return failWithRefreshedSession("게시글을 찾을 수 없습니다.", auth, 404);
   }
 
   const comment = await prisma.comment.create({
@@ -50,12 +58,14 @@ export async function POST(request: Request, { params }: Params) {
       author: {
         select: {
           id: true,
-          email: true,
+          username: true,
           name: true,
         },
       },
     },
   });
 
-  return json({ comment: serializeComment(comment) }, 201);
+  const response = json({ comment: serializeComment(comment) }, 201);
+
+  return attachRefreshedSessionCookie(response, auth);
 }

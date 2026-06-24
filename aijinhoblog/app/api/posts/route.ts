@@ -1,10 +1,15 @@
-import type { Prisma } from "@/lib/generated/prisma";
+import type { Prisma } from "@/backend/generated/prisma";
 
-import { getCurrentUser } from "@/lib/auth";
-import { fail, json, readJson } from "@/lib/http";
-import { postSummaryInclude, serializePost, toPostTagCreate } from "@/lib/posts";
-import { prisma } from "@/lib/prisma";
-import { parsePositiveInt, parsePostPayload } from "@/lib/validation";
+import { json } from "@/backend/core/http";
+import {
+  createPostListFilterWhere,
+  normalizePostSort,
+  POST_PAGE_SIZE,
+  postSummaryInclude,
+  serializePost,
+} from "@/backend/posts/service";
+import { prisma } from "@/backend/core/prisma";
+import { parsePositiveInt } from "@/backend/core/validation";
 
 export const runtime = "nodejs";
 
@@ -14,30 +19,23 @@ export async function GET(request: Request) {
     min: 1,
     max: 1000,
   });
-  const pageSize = parsePositiveInt(url.searchParams.get("pageSize"), 10, {
+  const pageSize = parsePositiveInt(url.searchParams.get("pageSize"), POST_PAGE_SIZE, {
     min: 1,
     max: 30,
   });
-  const query = url.searchParams.get("query")?.trim();
-  const tag = url.searchParams.get("tag")?.trim().toLowerCase();
-  const where: Prisma.PostWhereInput = {};
+  const query = url.searchParams.get("query");
+  const tag = url.searchParams.get("tag");
+  const sort = normalizePostSort(url.searchParams.get("sort"));
+  const folderId = url.searchParams.get("folderId")?.trim();
+  const where: Prisma.PostWhereInput = {
+    status: "PUBLISHED",
+    visibility: "PUBLIC",
+  };
 
-  if (query) {
-    where.OR = [
-      { title: { contains: query } },
-      { excerpt: { contains: query } },
-      { content: { contains: query } },
-    ];
-  }
+  Object.assign(where, createPostListFilterWhere({ query, tag }));
 
-  if (tag) {
-    where.tags = {
-      some: {
-        tag: {
-          name: tag,
-        },
-      },
-    };
+  if (folderId) {
+    where.folderId = folderId;
   }
 
   const [total, posts] = await prisma.$transaction([
@@ -46,7 +44,7 @@ export async function GET(request: Request) {
       where,
       include: postSummaryInclude,
       orderBy: {
-        createdAt: "desc",
+        createdAt: sort === "oldest" ? "asc" : "desc",
       },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -62,34 +60,4 @@ export async function GET(request: Request) {
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
     },
   });
-}
-
-export async function POST(request: Request) {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return fail("로그인이 필요합니다.", 401);
-  }
-
-  const payload = await readJson(request);
-  const parsed = parsePostPayload(payload);
-
-  if (!parsed.ok) {
-    return fail(parsed.error, 400);
-  }
-
-  const post = await prisma.post.create({
-    data: {
-      title: parsed.value.title,
-      excerpt: parsed.value.excerpt,
-      content: parsed.value.content,
-      authorId: user.id,
-      tags: {
-        create: toPostTagCreate(parsed.value.tagNames),
-      },
-    },
-    include: postSummaryInclude,
-  });
-
-  return json({ post: serializePost(post) }, 201);
 }

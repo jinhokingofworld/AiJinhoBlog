@@ -19,12 +19,15 @@ aijinhoblog/out/
 build/
 dist/
 coverage/
-aijinhoblog/lib/generated/prisma/
+aijinhoblog/backend/generated/prisma/
 
 # env files
 .env
 .env.*
 !.env.example
+deploy.env
+deploy.env.*
+!deploy.env.example
 aijinhoblog/.env
 aijinhoblog/.env.*
 !aijinhoblog/.env.example
@@ -40,6 +43,7 @@ chroma/
 .chroma/
 data/chroma/
 mysql-data/
+aijinhoblog/public/uploads/
 
 # misc
 .DS_Store
