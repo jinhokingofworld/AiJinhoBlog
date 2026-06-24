@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { fetchJsonWithRetry, RetryableRequestError } from "@/backend/ai/http";
 import { createOwnerPost } from "@/backend/posts/service";
 import { normalizeKnowledgeText } from "@/backend/ai/text";
+import { assertPublicHttpUrl, fetchPublicHttpUrl, UnsafeUrlError } from "@/backend/security/url";
 import type { PostInput } from "@/backend/core/validation";
 
 type DraftOptions = {
@@ -60,6 +61,14 @@ function htmlToPlainText(html: string) {
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
       .replace(/<[^>]+>/g, " "),
   );
+}
+
+function toContentDraftUrlError(error: unknown) {
+  if (error instanceof UnsafeUrlError) {
+    return new ContentDraftError(error.message, error.status);
+  }
+
+  return error;
 }
 
 async function generateDraftContent({
@@ -171,50 +180,48 @@ export async function createDraftFromLink({
   ownerId: string;
   url: string;
 }) {
-  let parsedUrl: URL;
-
   try {
-    parsedUrl = new URL(url);
-  } catch {
-    throw new ContentDraftError("올바른 URL이 필요합니다.", 400);
-  }
-
-  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-    throw new ContentDraftError("http 또는 https URL만 분석할 수 있습니다.", 400);
-  }
-
-  const response = await fetch(parsedUrl, {
-    headers: {
-      "User-Agent": "AiJinhoBlog MCP/1.0",
-    },
-  });
-
-  if (!response.ok) {
-    throw new ContentDraftError(`링크 본문을 가져오지 못했습니다. status=${response.status}`, 502);
-  }
-
-  const html = await response.text();
-  const sourceText = htmlToPlainText(html).slice(0, 12_000);
-  const title = options.title ?? extractHtmlTitle(html) ?? createFallbackTitle("링크 초안", url);
-  const draft = await generateDraftContent({
-    instruction: `다음 링크 자료를 블로그 초안으로 정리해줘.\nURL: ${url}\n\n요구사항:\n- 핵심 요약\n- 글감으로 쓸 관점\n- 출처 URL 표시`,
-    source: [
-      {
-        text: sourceText || url,
-        type: "text",
+    const parsedUrl = await assertPublicHttpUrl(url);
+    const response = await fetchPublicHttpUrl(parsedUrl, {
+      headers: {
+        "User-Agent": "AiJinhoBlog MCP/1.0",
       },
-    ],
-  });
+    });
 
-  return createOwnerPost(
-    ownerId,
-    createDraftInput({
-      content: `출처: ${url}\n\n${draft}`,
-      folderId: options.folderId,
-      tagNames: options.tagNames,
-      title,
-    }),
-  );
+    if (!response.ok) {
+      throw new ContentDraftError(
+        `링크 본문을 가져오지 못했습니다. status=${response.status}`,
+        502,
+      );
+    }
+
+    const sourceUrl = parsedUrl.toString();
+    const html = await response.text();
+    const sourceText = htmlToPlainText(html).slice(0, 12_000);
+    const title =
+      options.title ?? extractHtmlTitle(html) ?? createFallbackTitle("링크 초안", sourceUrl);
+    const draft = await generateDraftContent({
+      instruction: `다음 링크 자료를 블로그 초안으로 정리해줘.\nURL: ${sourceUrl}\n\n요구사항:\n- 핵심 요약\n- 글감으로 쓸 관점\n- 출처 URL 표시`,
+      source: [
+        {
+          text: sourceText || sourceUrl,
+          type: "text",
+        },
+      ],
+    });
+
+    return createOwnerPost(
+      ownerId,
+      createDraftInput({
+        content: `출처: ${sourceUrl}\n\n${draft}`,
+        folderId: options.folderId,
+        tagNames: options.tagNames,
+        title,
+      }),
+    );
+  } catch (error) {
+    throw toContentDraftUrlError(error);
+  }
 }
 
 export async function createDraftFromImage({
@@ -228,47 +235,42 @@ export async function createDraftFromImage({
   ownerId: string;
   prompt?: string | null;
 }) {
-  let parsedUrl: URL;
-
   try {
-    parsedUrl = new URL(imageUrl);
-  } catch {
-    throw new ContentDraftError("올바른 이미지 URL이 필요합니다.", 400);
-  }
+    const parsedUrl = await assertPublicHttpUrl(imageUrl);
+    const sourceUrl = parsedUrl.toString();
 
-  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-    throw new ContentDraftError("http 또는 https 이미지 URL만 분석할 수 있습니다.", 400);
-  }
-
-  const title = options.title ?? createFallbackTitle("이미지 초안", imageUrl);
-  const draft = await generateDraftContent({
-    instruction: [
-      "이미지를 분석해 블로그 초안으로 정리해줘.",
-      prompt ? `사용자 요청: ${prompt}` : null,
-      "요구사항:",
-      "- 이미지에서 관찰되는 내용",
-      "- 글감으로 발전시킬 수 있는 관점",
-      "- 확인 불가능한 내용은 추측이라고 표시",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    source: [
-      {
-        image_url: {
-          url: imageUrl,
+    const title = options.title ?? createFallbackTitle("이미지 초안", sourceUrl);
+    const draft = await generateDraftContent({
+      instruction: [
+        "이미지를 분석해 블로그 초안으로 정리해줘.",
+        prompt ? `사용자 요청: ${prompt}` : null,
+        "요구사항:",
+        "- 이미지에서 관찰되는 내용",
+        "- 글감으로 발전시킬 수 있는 관점",
+        "- 확인 불가능한 내용은 추측이라고 표시",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      source: [
+        {
+          image_url: {
+            url: sourceUrl,
+          },
+          type: "image_url",
         },
-        type: "image_url",
-      },
-    ],
-  });
+      ],
+    });
 
-  return createOwnerPost(
-    ownerId,
-    createDraftInput({
-      content: `이미지: ${imageUrl}\n\n${draft}`,
-      folderId: options.folderId,
-      tagNames: options.tagNames,
-      title,
-    }),
-  );
+    return createOwnerPost(
+      ownerId,
+      createDraftInput({
+        content: `이미지: ${sourceUrl}\n\n${draft}`,
+        folderId: options.folderId,
+        tagNames: options.tagNames,
+        title,
+      }),
+    );
+  } catch (error) {
+    throw toContentDraftUrlError(error);
+  }
 }

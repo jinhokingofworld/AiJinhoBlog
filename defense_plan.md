@@ -86,12 +86,12 @@
 
 ### D4. 서버 측 URL fetch SSRF 방어
 
-- [ ] 링크/이미지 초안 생성 URL guard 추가
-- [ ] `http`/`https`만 허용
-- [ ] localhost, loopback, private IP, link-local, metadata IP 차단
-- [ ] redirect 후 최종 URL도 재검증
-- [ ] unit test 추가
-- [ ] 검증: `npm run lint`, `npm run test`, `npm run build`
+- [x] 링크/이미지 초안 생성 URL guard 추가
+- [x] `http`/`https`만 허용
+- [x] localhost, loopback, private IP, link-local, metadata IP 차단
+- [x] redirect 후 최종 URL도 재검증
+- [x] unit test 추가
+- [x] 검증: `npm run lint`, `npm run test`, `npm run build`
 - [ ] PR 생성, CI 통과 확인, 머지
 
 ### D5. 업로드 파일 시그니처 검증
