@@ -1,4 +1,5 @@
 import { hashPassword } from "@/backend/auth/crypto";
+import { enforceAuthRateLimit, toAuthRateLimitResponse } from "@/backend/auth/rate-limit";
 import { fail, json, readJson } from "@/backend/core/http";
 import { prisma } from "@/backend/core/prisma";
 import { parseCredentials } from "@/backend/core/validation";
@@ -13,6 +14,22 @@ export async function POST(request: Request) {
 
   if (!parsed.ok) {
     return fail(parsed.error, 400);
+  }
+
+  try {
+    await enforceAuthRateLimit({
+      endpoint: "auth.signup",
+      identifier: parsed.value.email,
+      request,
+    });
+  } catch (error) {
+    const rateLimit = toAuthRateLimitResponse(error);
+
+    if (rateLimit) {
+      return fail(rateLimit.message, rateLimit.status);
+    }
+
+    throw error;
   }
 
   const existingUser = await prisma.user.findFirst({

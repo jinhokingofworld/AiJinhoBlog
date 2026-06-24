@@ -76,13 +76,13 @@
 
 ### D3. 인증 endpoint rate limit
 
-- [ ] 로그인/회원가입 전용 rate limit helper 추가
-- [ ] IP + email/username 기준 bucket 설계
-- [ ] 실패/초과 시 429와 안전한 메시지 반환
-- [ ] auth route에 적용
-- [ ] unit test 추가
-- [ ] 검증: `npm run prisma:generate`, `npm run lint`, `npm run test`, `npm run build`
-- [ ] PR 생성, CI 통과 확인, 머지
+- [x] 로그인/회원가입 전용 rate limit helper 추가
+- [x] IP + email/username 기준 bucket 설계
+- [x] 실패/초과 시 429와 안전한 메시지 반환
+- [x] auth route에 적용
+- [x] unit test 추가
+- [x] 검증: `npm run prisma:generate`, `npm run lint`, `npm run test`, `npm run build`
+- [x] PR 생성, CI 통과 확인, 머지
 
 ### D4. 서버 측 URL fetch SSRF 방어
 
