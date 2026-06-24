@@ -92,14 +92,14 @@
 - [x] redirect 후 최종 URL도 재검증
 - [x] unit test 추가
 - [x] 검증: `npm run lint`, `npm run test`, `npm run build`
-- [ ] PR 생성, CI 통과 확인, 머지
+- [x] PR 생성, CI 통과 확인, 머지
 
 ### D5. 업로드 파일 시그니처 검증
 
-- [ ] MIME type 외에 magic bytes 검증 추가
-- [ ] 확장자와 실제 파일 signature 불일치 차단
-- [ ] 삭제 경로 traversal 방어 테스트 추가
-- [ ] 검증: `npm run lint`, `npm run test`, `npm run build`
+- [x] MIME type 외에 magic bytes 검증 추가
+- [x] 확장자와 실제 파일 signature 불일치 차단
+- [x] 삭제 경로 traversal 방어 테스트 추가
+- [x] 검증: `npm run lint`, `npm run test`, `npm run build`
 - [ ] PR 생성, CI 통과 확인, 머지
 
 ### D6. 보안 이벤트 로깅
