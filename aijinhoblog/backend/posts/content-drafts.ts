@@ -4,6 +4,7 @@ import { fetchJsonWithRetry, RetryableRequestError } from "@/backend/ai/http";
 import { createOwnerPost } from "@/backend/posts/service";
 import { normalizeKnowledgeText } from "@/backend/ai/text";
 import { assertPublicHttpUrl, fetchPublicHttpUrl, UnsafeUrlError } from "@/backend/security/url";
+import { logSecurityEvent } from "@/backend/security/events";
 import type { PostInput } from "@/backend/core/validation";
 
 type DraftOptions = {
@@ -63,8 +64,33 @@ function htmlToPlainText(html: string) {
   );
 }
 
-function toContentDraftUrlError(error: unknown) {
+function summarizeUrlHost(value: string) {
+  try {
+    return new URL(value).hostname || "unknown";
+  } catch {
+    return "invalid-url";
+  }
+}
+
+function toContentDraftUrlError(
+  error: unknown,
+  context: {
+    ownerId: string;
+    source: "image-draft" | "link-draft";
+    url: string;
+  },
+) {
   if (error instanceof UnsafeUrlError) {
+    logSecurityEvent({
+      metadata: {
+        ownerId: context.ownerId,
+        reason: error.message,
+        source: context.source,
+        urlHost: summarizeUrlHost(context.url),
+      },
+      type: "ssrf.blocked",
+    });
+
     return new ContentDraftError(error.message, error.status);
   }
 
@@ -220,7 +246,11 @@ export async function createDraftFromLink({
       }),
     );
   } catch (error) {
-    throw toContentDraftUrlError(error);
+    throw toContentDraftUrlError(error, {
+      ownerId,
+      source: "link-draft",
+      url,
+    });
   }
 }
 
@@ -271,6 +301,10 @@ export async function createDraftFromImage({
       }),
     );
   } catch (error) {
-    throw toContentDraftUrlError(error);
+    throw toContentDraftUrlError(error, {
+      ownerId,
+      source: "image-draft",
+      url: imageUrl,
+    });
   }
 }

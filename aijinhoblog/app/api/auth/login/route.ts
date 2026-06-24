@@ -1,10 +1,16 @@
 import { attachSessionCookie, createUserSession } from "@/backend/auth/session";
 import { verifyPassword } from "@/backend/auth/crypto";
-import { enforceAuthRateLimit, toAuthRateLimitResponse } from "@/backend/auth/rate-limit";
+import {
+  enforceAuthRateLimit,
+  readClientIp,
+  toAuthRateLimitResponse,
+} from "@/backend/auth/rate-limit";
 import { ensureDefaultBlogContent } from "@/backend/posts/folders";
 import { fail, json, readJson } from "@/backend/core/http";
 import { prisma } from "@/backend/core/prisma";
 import { parseCredentials } from "@/backend/core/validation";
+import { hashSecurityValue } from "@/backend/security/event-hash";
+import { logSecurityEvent } from "@/backend/security/events";
 
 export const runtime = "nodejs";
 
@@ -15,6 +21,14 @@ export async function POST(request: Request) {
   const parsed = parseCredentials(payload, { requireName: false });
 
   if (!parsed.ok) {
+    logSecurityEvent({
+      metadata: {
+        reason: "validation_failed",
+      },
+      request,
+      type: "auth.login_failed",
+    });
+
     return fail(parsed.error, 400);
   }
 
@@ -28,6 +42,17 @@ export async function POST(request: Request) {
     const rateLimit = toAuthRateLimitResponse(error);
 
     if (rateLimit) {
+      logSecurityEvent({
+        metadata: {
+          clientIpHash: hashSecurityValue(readClientIp(request)),
+          endpoint: "auth.login",
+          identifierHash: hashSecurityValue(parsed.value.email),
+          reason: "rate_limit_exceeded",
+        },
+        request,
+        type: "auth.rate_limited",
+      });
+
       return fail(rateLimit.message, rateLimit.status);
     }
 
@@ -41,6 +66,15 @@ export async function POST(request: Request) {
   });
 
   if (!user || !verifyPassword(parsed.value.password, user.passwordHash)) {
+    logSecurityEvent({
+      metadata: {
+        emailHash: hashSecurityValue(parsed.value.email),
+        reason: "invalid_credentials",
+      },
+      request,
+      type: "auth.login_failed",
+    });
+
     return fail("이메일 또는 비밀번호가 올바르지 않습니다.", 401);
   }
 
