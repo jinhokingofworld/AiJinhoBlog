@@ -75,6 +75,7 @@ export default function LoginPage() {
   // 로그인 폼 제출 흐름입니다.
   // 기본 HTML form 제출은 페이지를 새로고침하므로 막고, fetch로 로그인 API를 호출합니다.
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    // 폼이 submit되면, 브라우저가 페이지를 새로고침하거나 이동하려고 하는데, 그걸 막기 위해 사용
     event.preventDefault();
     setLoading(true);
     setMessage("");
