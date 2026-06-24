@@ -1,5 +1,6 @@
 import { attachSessionCookie, createUserSession } from "@/backend/auth/session";
 import { verifyPassword } from "@/backend/auth/crypto";
+import { enforceAuthRateLimit, toAuthRateLimitResponse } from "@/backend/auth/rate-limit";
 import { ensureDefaultBlogContent } from "@/backend/posts/folders";
 import { fail, json, readJson } from "@/backend/core/http";
 import { prisma } from "@/backend/core/prisma";
@@ -15,6 +16,22 @@ export async function POST(request: Request) {
 
   if (!parsed.ok) {
     return fail(parsed.error, 400);
+  }
+
+  try {
+    await enforceAuthRateLimit({
+      endpoint: "auth.login",
+      identifier: parsed.value.email,
+      request,
+    });
+  } catch (error) {
+    const rateLimit = toAuthRateLimitResponse(error);
+
+    if (rateLimit) {
+      return fail(rateLimit.message, rateLimit.status);
+    }
+
+    throw error;
   }
 
   const user = await prisma.user.findUnique({

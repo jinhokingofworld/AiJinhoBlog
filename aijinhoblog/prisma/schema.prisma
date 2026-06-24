@@ -318,6 +318,20 @@ model AiRateLimitBucket {
   @@index([userId, endpoint, windowStart])
 }
 
+model AuthRateLimitBucket {
+  id             String   @id @default(cuid())
+  endpoint       String   @db.VarChar(80)
+  ipHash         String   @db.Char(64)
+  identifierHash String   @db.Char(64)
+  windowStart    DateTime
+  requestCount   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([endpoint, ipHash, identifierHash, windowStart])
+  @@index([endpoint, ipHash, windowStart])
+}
+
 model WritingStyleProfile {
   id                  String   @id @default(cuid())
   ownerId             String   @unique

@@ -173,6 +173,8 @@ MCP owner는 tool 입력의 `ownerUsername`, `ownerEmail`, `ownerId`로 지정�
 - `OPENAI_RAG_MODEL`: RAG 답변 생성 모델명
 - `AI_RATE_LIMIT_WINDOW_MS`: 사용자별 AI endpoint 제한 시간 창, 기본값 `60000`
 - `AI_RATE_LIMIT_REQUESTS`: 사용자별 endpoint/window 요청 허용 수, 기본값 `20`
+- `AUTH_RATE_LIMIT_WINDOW_MS`: IP와 email 기준 인증 endpoint 제한 시간 창, 기본값 `900000`
+- `AUTH_RATE_LIMIT_REQUESTS`: 인증 endpoint/window 요청 허용 수, 기본값 `10`
 - `CHROMA_URL`: ChromaDB 서버 주소
 - `CHROMA_COLLECTION`: ChromaDB 컬렉션 이름
 - `DROPBOX_APP_KEY`: 서버 공통 Dropbox OAuth app key
