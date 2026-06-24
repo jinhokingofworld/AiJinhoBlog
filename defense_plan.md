@@ -44,25 +44,25 @@
 
 ### D0. 보안 계획 문서화
 
-- [ ] `defense_plan.md` 작성
-- [ ] OWASP Top 10:2025 기준 항목 반영
-- [ ] 현재 적용 상태와 남은 위험 정리
-- [ ] 구현 체크리스트 정의
-- [ ] 로컬 검증: `npm run format:check`
-- [ ] PR 생성, CI 통과 확인, 머지
+- [x] `defense_plan.md` 작성
+- [x] OWASP Top 10:2025 기준 항목 반영
+- [x] 현재 적용 상태와 남은 위험 정리
+- [x] 구현 체크리스트 정의
+- [x] 로컬 검증: `npm run format:check`
+- [x] PR 생성, CI 통과 확인, 머지
 
 ### D1. 보안 헤더와 production secret guard
 
-- [ ] `next.config.ts`에 전역 security headers 추가
+- [x] `next.config.ts`에 전역 security headers 추가
   - `X-Content-Type-Options: nosniff`
   - `Referrer-Policy: strict-origin-when-cross-origin`
   - `X-Frame-Options: DENY`
   - `Permissions-Policy`
   - 기본 `Content-Security-Policy`
-- [ ] `AUTH_JWT_SECRET`/`NEXTAUTH_SECRET`가 production에서 개발 fallback이면 boot 실패
-- [ ] secret 길이 최소 기준 테스트 추가
-- [ ] 검증: `npm run lint`, `npm run test`, `npm run build`
-- [ ] PR 생성, CI 통과 확인, 머지
+- [x] `AUTH_JWT_SECRET`/`NEXTAUTH_SECRET`가 production에서 개발 fallback이면 boot 실패
+- [x] secret 길이 최소 기준 테스트 추가
+- [x] 검증: `npm run lint`, `npm run test`, `npm run build`
+- [x] PR 생성, CI 통과 확인, 머지
 
 ### D2. CSRF same-origin guard
 
