@@ -66,13 +66,13 @@
 
 ### D2. CSRF same-origin guard
 
-- [ ] unsafe method(`POST`, `PATCH`, `DELETE`, `PUT`) 공통 guard 추가
-- [ ] `Origin` 또는 `Referer`가 현재 host와 다르면 403 반환
-- [ ] OAuth callback 같은 외부 redirect GET은 guard 대상에서 제외
-- [ ] 주요 state-changing API에 guard 적용
-- [ ] unit test 추가
-- [ ] 검증: `npm run lint`, `npm run test`, `npm run build`
-- [ ] PR 생성, CI 통과 확인, 머지
+- [x] unsafe method(`POST`, `PATCH`, `DELETE`, `PUT`) 공통 guard 추가
+- [x] `Origin` 또는 `Referer`가 현재 host와 다르면 403 반환
+- [x] OAuth callback 같은 외부 redirect GET은 guard 대상에서 제외
+- [x] 주요 state-changing API에 guard 적용
+- [x] unit test 추가
+- [x] 검증: `npm run lint`, `npm run test`, `npm run build`
+- [x] PR 생성, CI 통과 확인, 머지
 
 ### D3. 인증 endpoint rate limit
 
