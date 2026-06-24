@@ -8,6 +8,9 @@
     "start": "npm --prefix aijinhoblog run start",
     "lint": "npm --prefix aijinhoblog run lint",
     "test": "npm --prefix aijinhoblog run test",
+    "audit": "npm run audit:root && npm run audit:app",
+    "audit:app": "npm --prefix aijinhoblog audit --audit-level=high",
+    "audit:root": "npm audit --audit-level=high",
     "prisma:generate": "npm --prefix aijinhoblog run prisma:generate",
     "prisma:validate": "npm --prefix aijinhoblog run prisma:validate",
     "prisma:migrate": "npm --prefix aijinhoblog run prisma:migrate",
@@ -18,7 +21,7 @@
     "services:up": "docker compose up -d",
     "services:down": "docker compose down",
     "services:config": "docker compose config",
-    "ci": "npm ci && npm --prefix aijinhoblog ci && npm run prisma:validate && npm run prisma:generate && npm run lint && npm run format:check && npm run test && npm run build",
+    "ci": "npm ci && npm --prefix aijinhoblog ci && npm run audit && npm run prisma:validate && npm run prisma:generate && npm run lint && npm run format:check && npm run test && npm run build",
     "install:app": "npm --prefix aijinhoblog install",
     "install:all": "npm install && npm --prefix aijinhoblog install"
   },
