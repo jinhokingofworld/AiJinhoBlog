@@ -100,15 +100,15 @@
 - [x] 확장자와 실제 파일 signature 불일치 차단
 - [x] 삭제 경로 traversal 방어 테스트 추가
 - [x] 검증: `npm run lint`, `npm run test`, `npm run build`
-- [ ] PR 생성, CI 통과 확인, 머지
+- [x] PR 생성, CI 통과 확인, 머지
 
 ### D6. 보안 이벤트 로깅
 
-- [ ] security event logger 추가
-- [ ] auth 실패, rate limit, CSRF 차단, SSRF 차단 이벤트 기록
-- [ ] 민감정보 마스킹 정책 적용
-- [ ] unit test 추가
-- [ ] 검증: `npm run lint`, `npm run test`, `npm run build`
+- [x] security event logger 추가
+- [x] auth 실패, rate limit, CSRF 차단, SSRF 차단 이벤트 기록
+- [x] 민감정보 마스킹 정책 적용
+- [x] unit test 추가
+- [x] 검증: `npm run lint`, `npm run test`, `npm run build`
 - [ ] PR 생성, CI 통과 확인, 머지
 
 ### D7. supply-chain CI gate

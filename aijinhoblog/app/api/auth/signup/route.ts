@@ -1,8 +1,14 @@
 import { hashPassword } from "@/backend/auth/crypto";
-import { enforceAuthRateLimit, toAuthRateLimitResponse } from "@/backend/auth/rate-limit";
+import {
+  enforceAuthRateLimit,
+  readClientIp,
+  toAuthRateLimitResponse,
+} from "@/backend/auth/rate-limit";
 import { fail, json, readJson } from "@/backend/core/http";
 import { prisma } from "@/backend/core/prisma";
 import { parseCredentials } from "@/backend/core/validation";
+import { hashSecurityValue } from "@/backend/security/event-hash";
+import { logSecurityEvent } from "@/backend/security/events";
 
 export const runtime = "nodejs";
 
@@ -13,6 +19,14 @@ export async function POST(request: Request) {
   const parsed = parseCredentials(payload, { requireName: true, requireUsername: true });
 
   if (!parsed.ok) {
+    logSecurityEvent({
+      metadata: {
+        reason: "validation_failed",
+      },
+      request,
+      type: "auth.signup_failed",
+    });
+
     return fail(parsed.error, 400);
   }
 
@@ -26,6 +40,17 @@ export async function POST(request: Request) {
     const rateLimit = toAuthRateLimitResponse(error);
 
     if (rateLimit) {
+      logSecurityEvent({
+        metadata: {
+          clientIpHash: hashSecurityValue(readClientIp(request)),
+          endpoint: "auth.signup",
+          identifierHash: hashSecurityValue(parsed.value.email),
+          reason: "rate_limit_exceeded",
+        },
+        request,
+        type: "auth.rate_limited",
+      });
+
       return fail(rateLimit.message, rateLimit.status);
     }
 
@@ -44,10 +69,28 @@ export async function POST(request: Request) {
   });
 
   if (existingUser?.email === parsed.value.email) {
+    logSecurityEvent({
+      metadata: {
+        emailHash: hashSecurityValue(parsed.value.email),
+        reason: "duplicate_email",
+      },
+      request,
+      type: "auth.signup_failed",
+    });
+
     return fail("이미 가입된 이메일입니다.", 409);
   }
 
   if (existingUser?.username === parsed.value.username) {
+    logSecurityEvent({
+      metadata: {
+        emailHash: hashSecurityValue(parsed.value.email),
+        reason: "duplicate_username",
+      },
+      request,
+      type: "auth.signup_failed",
+    });
+
     return fail("이미 사용 중인 username입니다.", 409);
   }
 
