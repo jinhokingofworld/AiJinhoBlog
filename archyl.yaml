@@ -1,0 +1,566 @@
+version: "1.0"
+
+project:
+  name: "AiJinhoBlog"
+  description: "개인 블로그 기능을 기반으로 RAG, MCP, AI Agent를 확장하는 Next.js 풀스택 프로젝트"
+  root: "."
+  app_root: "aijinhoblog"
+  language: "TypeScript"
+  framework: "Next.js App Router"
+
+legend:
+  boundary: "큰 실행 경계 또는 책임 영역"
+  entrypoint: "사용자 요청이 처음 들어오는 진입점"
+  ui: "React 화면과 클라이언트 상호작용"
+  service: "서버 도메인 로직과 외부 연동"
+  data: "영속 저장소 또는 벡터 저장소"
+  external: "프로젝트 밖의 외부 서비스"
+  script: "운영/개발 보조 실행 파일"
+  config: "설정, 검증, 배포 파일"
+
+views:
+  - id: workspace
+    title: "Workspace Map"
+    description: "루트는 실행/배포 오케스트레이션이고, 실제 앱 코드는 aijinhoblog/ 아래에 있다."
+    root: repo
+
+  - id: request_flow
+    title: "Request Flow"
+    description: "브라우저 요청은 app/ 라우트에서 시작해 frontend/ UI와 backend/ 서비스로 분기된다."
+    root: browser
+
+  - id: ai_flow
+    title: "AI and Knowledge Flow"
+    description: "게시글과 Dropbox Markdown을 전처리해 ChromaDB에 색인하고, OpenAI를 통해 검색/답변/Agent 기능을 제공한다."
+    root: ai_pipeline
+
+nodes:
+  - id: browser
+    label: "User browser"
+    type: external
+    notes:
+      - "사용자가 접속하는 Next.js 웹 UI"
+
+  - id: ai_pipeline
+    label: "AI knowledge pipeline"
+    type: boundary
+    children:
+      - ai_backend
+      - integration_backend
+      - openai
+      - chroma
+      - dropbox
+
+  - id: repo
+    label: "AiJinhoBlog Repository"
+    type: boundary
+    path: "."
+    children:
+      - root_package
+      - docker_stack
+      - docs
+      - app_root
+
+  - id: root_package
+    label: "Root npm scripts"
+    type: config
+    path: "package.json"
+    notes:
+      - "install:all, dev, build, lint, test 같은 작업을 aijinhoblog/ 앱으로 위임"
+      - "services:up/down으로 MySQL과 ChromaDB Docker 서비스를 관리"
+
+  - id: docker_stack
+    label: "Docker services"
+    type: data
+    path: "docker-compose.yml"
+    children:
+      - mysql
+      - chroma
+
+  - id: docs
+    label: "Project documentation"
+    type: config
+    path: "docs"
+    notes:
+      - "프로젝트 목표, 단계별 기능, 배포/검증 문서"
+
+  - id: app_root
+    label: "Next.js application"
+    type: boundary
+    path: "aijinhoblog"
+    children:
+      - app_routes
+      - frontend
+      - backend
+      - prisma
+      - public_assets
+      - scripts
+      - app_config
+
+  - id: app_routes
+    label: "App Router entrypoints"
+    type: entrypoint
+    path: "aijinhoblog/app"
+    children:
+      - public_pages
+      - user_pages
+      - api_routes
+    notes:
+      - "page.tsx, layout.tsx, route.ts 중심의 얇은 라우팅 계층"
+      - "URL 매핑, 서버 데이터 로딩, API 요청 진입을 담당"
+
+  - id: public_pages
+    label: "Public pages"
+    type: entrypoint
+    path: "aijinhoblog/app"
+    examples:
+      - "/"
+      - "/login"
+      - "/signup"
+
+  - id: user_pages
+    label: "User blog pages"
+    type: entrypoint
+    path: "aijinhoblog/app/[username]"
+    examples:
+      - "/{username}"
+      - "/{username}/posts"
+      - "/{username}/posts/{postId}"
+      - "/{username}/memory"
+      - "/{username}/agent"
+      - "/{username}/settings/*"
+
+  - id: api_routes
+    label: "API routes"
+    type: entrypoint
+    path: "aijinhoblog/app/api"
+    children:
+      - auth_api
+      - public_blog_api
+      - owner_api
+      - ai_api
+
+  - id: auth_api
+    label: "Auth API"
+    type: entrypoint
+    path: "aijinhoblog/app/api/auth"
+    examples:
+      - "POST /api/auth/signup"
+      - "POST /api/auth/login"
+      - "POST /api/auth/logout"
+      - "GET /api/auth/me"
+
+  - id: public_blog_api
+    label: "Public blog API"
+    type: entrypoint
+    path: "aijinhoblog/app/api/users"
+    examples:
+      - "GET /api/users/{username}/profile"
+      - "GET /api/users/{username}/posts"
+      - "GET /api/users/{username}/posts/{postId}"
+
+  - id: owner_api
+    label: "Owner API"
+    type: entrypoint
+    path: "aijinhoblog/app/api/me"
+    examples:
+      - "POST /api/me/posts"
+      - "PATCH /api/me/posts/{postId}"
+      - "GET /api/me/folders"
+      - "GET /api/me/connections"
+
+  - id: ai_api
+    label: "AI, RAG, Agent API"
+    type: entrypoint
+    path: "aijinhoblog/app/api/me"
+    examples:
+      - "POST /api/me/rag/search"
+      - "POST /api/me/rag/answer"
+      - "POST /api/me/agent/rewrite"
+      - "POST /api/me/agent/refactor"
+      - "POST /api/me/dropbox/markdown/sync"
+
+  - id: frontend
+    label: "Frontend UI"
+    type: ui
+    path: "aijinhoblog/frontend"
+    children:
+      - shared_components
+      - post_ui
+      - comment_ui
+      - settings_ui
+      - rag_ui
+      - agent_ui
+    notes:
+      - "React 컴포넌트, 클라이언트 상태, 화면 조립을 담당"
+
+  - id: shared_components
+    label: "Shared layout/components"
+    type: ui
+    path: "aijinhoblog/frontend/components"
+    examples:
+      - "page-frame.tsx"
+      - "blog-components.tsx"
+      - "desktop-account-bar.tsx"
+
+  - id: post_ui
+    label: "Post UI"
+    type: ui
+    path: "aijinhoblog/frontend/features/posts"
+
+  - id: comment_ui
+    label: "Comment UI"
+    type: ui
+    path: "aijinhoblog/frontend/features/comments"
+
+  - id: settings_ui
+    label: "Settings UI"
+    type: ui
+    path: "aijinhoblog/frontend/features/settings"
+
+  - id: rag_ui
+    label: "Memory Q&A UI"
+    type: ui
+    path: "aijinhoblog/frontend/features/rag"
+
+  - id: agent_ui
+    label: "Writing Agent UI"
+    type: ui
+    path: "aijinhoblog/frontend/features/agent"
+
+  - id: backend
+    label: "Backend services"
+    type: service
+    path: "aijinhoblog/backend"
+    children:
+      - core_backend
+      - auth_backend
+      - post_backend
+      - user_backend
+      - ai_backend
+      - integration_backend
+      - mcp_backend
+      - server_actions
+    notes:
+      - "인증, DB 접근, 게시글 도메인, AI 파이프라인, 외부 연동을 담당"
+
+  - id: core_backend
+    label: "Core helpers"
+    type: service
+    path: "aijinhoblog/backend/core"
+    examples:
+      - "env.ts"
+      - "http.ts"
+      - "prisma.ts"
+      - "validation.ts"
+
+  - id: auth_backend
+    label: "Auth/session"
+    type: service
+    path: "aijinhoblog/backend/auth"
+    examples:
+      - "crypto.ts"
+      - "session.ts"
+
+  - id: post_backend
+    label: "Posts domain"
+    type: service
+    path: "aijinhoblog/backend/posts"
+    examples:
+      - "service.ts"
+      - "folders.ts"
+      - "content-drafts.ts"
+
+  - id: user_backend
+    label: "Users/profile"
+    type: service
+    path: "aijinhoblog/backend/users"
+
+  - id: ai_backend
+    label: "AI pipeline"
+    type: service
+    path: "aijinhoblog/backend/ai"
+    children:
+      - embedding_service
+      - vector_store
+      - rag_service
+      - generation_service
+      - writing_agent
+      - indexing_service
+
+  - id: embedding_service
+    label: "Embedding"
+    type: service
+    path: "aijinhoblog/backend/ai/embedding.ts"
+
+  - id: vector_store
+    label: "Vector store adapter"
+    type: service
+    path: "aijinhoblog/backend/ai/vector-store.ts"
+
+  - id: rag_service
+    label: "RAG search/answer"
+    type: service
+    path: "aijinhoblog/backend/ai/rag.ts"
+
+  - id: generation_service
+    label: "OpenAI generation client"
+    type: service
+    path: "aijinhoblog/backend/ai/generation.ts"
+
+  - id: writing_agent
+    label: "Writing Agent"
+    type: service
+    path: "aijinhoblog/backend/ai/writing-agent.ts"
+
+  - id: indexing_service
+    label: "Post indexing"
+    type: service
+    path: "aijinhoblog/backend/ai/indexing.ts"
+
+  - id: integration_backend
+    label: "External integrations"
+    type: service
+    path: "aijinhoblog/backend/integrations"
+    children:
+      - dropbox_integration
+      - external_connections
+
+  - id: dropbox_integration
+    label: "Dropbox integration"
+    type: service
+    path: "aijinhoblog/backend/integrations/dropbox"
+
+  - id: external_connections
+    label: "User-owned connection tokens"
+    type: service
+    path: "aijinhoblog/backend/integrations/external-connections.ts"
+
+  - id: mcp_backend
+    label: "MCP tools"
+    type: service
+    path: "aijinhoblog/backend/mcp"
+
+  - id: server_actions
+    label: "Server actions"
+    type: service
+    path: "aijinhoblog/backend/actions"
+
+  - id: prisma
+    label: "Prisma schema and migrations"
+    type: data
+    path: "aijinhoblog/prisma"
+    children:
+      - prisma_schema
+      - prisma_migrations
+      - prisma_client
+
+  - id: prisma_schema
+    label: "Database schema"
+    type: data
+    path: "aijinhoblog/prisma/schema.prisma"
+
+  - id: prisma_migrations
+    label: "Migrations"
+    type: data
+    path: "aijinhoblog/prisma/migrations"
+
+  - id: prisma_client
+    label: "Generated Prisma client"
+    type: data
+    path: "aijinhoblog/backend/generated/prisma"
+    generated: true
+
+  - id: mysql
+    label: "MySQL 8.4"
+    type: data
+    runtime: "Docker"
+    port: 3306
+    notes:
+      - "사용자, 세션, 게시글, 댓글, 폴더, 외부 연결, AI 요청 로그 저장"
+
+  - id: chroma
+    label: "ChromaDB"
+    type: data
+    runtime: "Docker"
+    port: 8000
+    notes:
+      - "게시글 chunk와 Dropbox Markdown chunk의 embedding vector 저장"
+
+  - id: openai
+    label: "OpenAI API"
+    type: external
+    notes:
+      - "Embedding, RAG 답변 생성, 글쓰기 Agent 생성 요청"
+
+  - id: dropbox
+    label: "Dropbox OAuth/API"
+    type: external
+    notes:
+      - "사용자별 OAuth 토큰으로 Markdown 문서 목록/본문 조회"
+
+  - id: public_assets
+    label: "Static assets"
+    type: ui
+    path: "aijinhoblog/public"
+
+  - id: scripts
+    label: "Operational scripts"
+    type: script
+    path: "aijinhoblog/scripts"
+    examples:
+      - "sync-dropbox-markdown.ts"
+      - "backfill-vector-index.ts"
+      - "mcp-server.ts"
+      - "mcp-smoke-test.ts"
+
+  - id: app_config
+    label: "App config and quality gates"
+    type: config
+    path: "aijinhoblog"
+    examples:
+      - "next.config.ts"
+      - "prisma.config.ts"
+      - "vitest.config.ts"
+      - "eslint.config.mjs"
+      - "tsconfig.json"
+
+edges:
+  - from: browser
+    to: app_routes
+    label: "HTTP request"
+
+  - from: app_routes
+    to: frontend
+    label: "renders/imports UI"
+
+  - from: app_routes
+    to: backend
+    label: "loads data / handles API"
+
+  - from: frontend
+    to: api_routes
+    label: "fetch JSON"
+
+  - from: api_routes
+    to: backend
+    label: "delegates domain logic"
+
+  - from: backend
+    to: prisma
+    label: "queries through Prisma"
+
+  - from: prisma
+    to: mysql
+    label: "SQL persistence"
+
+  - from: ai_backend
+    to: openai
+    label: "embedding and generation"
+
+  - from: ai_backend
+    to: chroma
+    label: "vector upsert/search/delete"
+
+  - from: integration_backend
+    to: dropbox
+    label: "OAuth and Markdown API"
+
+  - from: dropbox_integration
+    to: ai_backend
+    label: "Markdown text indexing"
+
+  - from: post_backend
+    to: ai_backend
+    label: "post vector indexing"
+
+  - from: scripts
+    to: backend
+    label: "reuse service modules"
+
+  - from: mcp_backend
+    to: post_backend
+    label: "blog tool operations"
+
+flows:
+  - id: auth_login
+    title: "Login flow"
+    steps:
+      - "Browser: /login"
+      - "app/login/page.tsx"
+      - "POST /api/auth/login"
+      - "backend/auth + backend/core/prisma"
+      - "MySQL Session/User"
+      - "HTTP-only auth cookie"
+
+  - id: post_crud
+    title: "Post CRUD flow"
+    steps:
+      - "Browser: /{username}/posts/*"
+      - "app/[username]/posts/*"
+      - "frontend/features/posts"
+      - "app/api/me/posts or app/api/users/{username}/posts"
+      - "backend/posts/service.ts"
+      - "Prisma"
+      - "MySQL"
+
+  - id: vector_indexing
+    title: "Post vector indexing flow"
+    steps:
+      - "Post create/update/delete"
+      - "backend/posts/service.ts"
+      - "backend/ai/indexing.ts"
+      - "backend/ai/embedding.ts"
+      - "OpenAI embedding API"
+      - "backend/ai/vector-store.ts"
+      - "ChromaDB"
+
+  - id: rag_answer
+    title: "Memory Q&A flow"
+    steps:
+      - "Browser: /{username}/memory"
+      - "frontend/features/rag/memory-qa-client.tsx"
+      - "POST /api/me/rag/answer"
+      - "backend/ai/rag.ts"
+      - "ChromaDB search"
+      - "OpenAI generation API"
+      - "Grounded answer with sources"
+
+  - id: dropbox_markdown
+    title: "Dropbox Markdown sync flow"
+    steps:
+      - "Browser: /{username}/settings/connections"
+      - "Dropbox OAuth callback"
+      - "backend/integrations/external-connections.ts"
+      - "backend/integrations/dropbox"
+      - "POST /api/me/dropbox/markdown/sync"
+      - "backend/ai/indexing.ts"
+      - "ChromaDB"
+
+  - id: writing_agent
+    title: "Writing Agent flow"
+    steps:
+      - "Browser: /{username}/agent"
+      - "frontend/features/agent/writing-agent-client.tsx"
+      - "app/api/me/agent/*"
+      - "backend/ai/writing-agent.ts"
+      - "backend/ai/generation.ts"
+      - "OpenAI generation API"
+
+quality_gates:
+  install: "npm run install:all"
+  services: "npm run services:up"
+  database: "npm run prisma:migrate"
+  validate:
+    - "npm run prisma:validate"
+    - "npm run prisma:generate"
+    - "npm run format:check"
+    - "npm run lint"
+    - "npm run test"
+    - "npm run build"
+
+ignore:
+  - "node_modules"
+  - ".next"
+  - "coverage"
+  - "backend/generated/prisma"
