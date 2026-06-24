@@ -33,6 +33,12 @@ jobs:
       - name: Install app dependencies
         run: npm --prefix aijinhoblog ci
 
+      - name: Audit root dependencies
+        run: npm audit --audit-level=high
+
+      - name: Audit app dependencies
+        run: npm --prefix aijinhoblog audit --audit-level=high
+
       - name: Validate Prisma schema
         run: npm run prisma:validate
 
