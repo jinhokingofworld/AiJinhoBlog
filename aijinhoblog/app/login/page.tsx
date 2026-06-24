@@ -7,7 +7,7 @@ import { FormEvent, useEffect, useState } from "react";
 //TypeScript 타입 설명서, 모양만 정의한 것
 //이런 타입은 여러 곳에서 반복될 가능성이 높아서 공유타입을 두는 것이 좋다
 //공유파일은 어디서 import해도 좋은 중립 파일에 놓는게 좋다. export를 붙이면 된다
-type User = { 
+type User = {
   id: string;
   email: string;
   username: string;
