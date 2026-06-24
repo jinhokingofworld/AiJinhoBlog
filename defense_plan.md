@@ -116,7 +116,7 @@
 - [x] root `npm audit`와 app `npm --prefix aijinhoblog audit`를 CI에 추가
 - [x] 실패 기준 문서화: `--audit-level=high` 기준으로 high/critical advisory가 있으면 CI 실패
 - [x] 검증: CI dry-run에 해당하는 로컬 audit 실행
-- [ ] PR 생성, CI 통과 확인, 머지
+- [x] PR 생성, CI 통과 확인, 머지
 
 ## 운영 원칙
 
