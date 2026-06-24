@@ -5,18 +5,35 @@ const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_DIGEST = "sha256";
 const JWT_ALGORITHM = "HS256";
 const JWT_TYPE = "JWT";
+const DEVELOPMENT_JWT_SECRET = "aijinhoblog-development-secret-change-me";
+const MIN_JWT_SECRET_LENGTH = 32;
 
 type JwtPayload = Record<string, unknown> & {
   exp?: number;
   iat?: number;
 };
 
-function getJwtSecret() {
-  return (
-    process.env.AUTH_JWT_SECRET ??
-    process.env.NEXTAUTH_SECRET ??
-    "aijinhoblog-development-secret-change-me"
-  );
+function readConfiguredJwtSecret() {
+  return process.env.AUTH_JWT_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim() || null;
+}
+
+export function getJwtSecret() {
+  const configuredSecret = readConfiguredJwtSecret();
+
+  if (process.env.NODE_ENV === "production") {
+    if (!configuredSecret) {
+      throw new Error("AUTH_JWT_SECRET 또는 NEXTAUTH_SECRET은 production에서 필수입니다.");
+    }
+
+    if (
+      configuredSecret === DEVELOPMENT_JWT_SECRET ||
+      configuredSecret.length < MIN_JWT_SECRET_LENGTH
+    ) {
+      throw new Error("production JWT secret은 32자 이상의 고유한 값이어야 합니다.");
+    }
+  }
+
+  return configuredSecret ?? DEVELOPMENT_JWT_SECRET;
 }
 
 function encodeJson(value: unknown) {

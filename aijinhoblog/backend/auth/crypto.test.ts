@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createJwt,
   createSessionToken,
+  getJwtSecret,
   hashPassword,
   hashSessionToken,
   verifyJwt,
@@ -10,6 +11,10 @@ import {
 } from "@/backend/auth/crypto";
 
 describe("auth crypto", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("hashes and verifies passwords", () => {
     const hash = hashPassword("correct-password");
 
@@ -33,5 +38,37 @@ describe("auth crypto", () => {
 
     expect(payload?.sub).toBe("user-1");
     expect(payload?.type).toBe("access");
+  });
+
+  it("allows the development JWT fallback outside production", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("AUTH_JWT_SECRET", "");
+    vi.stubEnv("NEXTAUTH_SECRET", "");
+
+    expect(getJwtSecret()).toBe("aijinhoblog-development-secret-change-me");
+  });
+
+  it("rejects missing production JWT secrets", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("AUTH_JWT_SECRET", "");
+    vi.stubEnv("NEXTAUTH_SECRET", "");
+
+    expect(() => getJwtSecret()).toThrow(/production/);
+  });
+
+  it("rejects short production JWT secrets", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("AUTH_JWT_SECRET", "short-secret");
+    vi.stubEnv("NEXTAUTH_SECRET", "");
+
+    expect(() => getJwtSecret()).toThrow(/32자/);
+  });
+
+  it("accepts a strong production JWT secret", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("AUTH_JWT_SECRET", "0123456789abcdef0123456789abcdef");
+    vi.stubEnv("NEXTAUTH_SECRET", "");
+
+    expect(getJwtSecret()).toBe("0123456789abcdef0123456789abcdef");
   });
 });
