@@ -328,8 +328,8 @@ model AuthRateLimitBucket {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  @@unique([endpoint, ipHash, identifierHash, windowStart])
-  @@index([endpoint, ipHash, windowStart])
+  @@unique([endpoint, ipHash, identifierHash, windowStart], map: "auth_rate_limit_bucket_unique")
+  @@index([endpoint, ipHash, windowStart], map: "auth_rate_limit_bucket_lookup_idx")
 }
 
 model WritingStyleProfile {

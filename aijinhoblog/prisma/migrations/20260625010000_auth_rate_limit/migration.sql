@@ -8,9 +8,9 @@ CREATE TABLE `AuthRateLimitBucket` (
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
 
-  UNIQUE INDEX `AuthRateLimitBucket_endpoint_ipHash_identifierHash_windowStart_key`
+  UNIQUE INDEX `auth_rate_limit_bucket_unique`
     (`endpoint`, `ipHash`, `identifierHash`, `windowStart`),
-  INDEX `AuthRateLimitBucket_endpoint_ipHash_windowStart_idx`
+  INDEX `auth_rate_limit_bucket_lookup_idx`
     (`endpoint`, `ipHash`, `windowStart`),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
